@@ -3,6 +3,15 @@ project(rtsp_gui VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 14)
 
+add_subdirectory(src/boost_network_adapter)
+
+set(TEST_ENABLED TRUE CACHE BOOL "Tests are enabled")
+if (${TEST_ENABLED})
+    enable_testing()
+    add_subdirectory(test)
+endif ()
+
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -19,4 +28,3 @@ set(gui_source_files
 
 add_executable(${PROJECT_NAME} ${gui_source_files})
 target_link_libraries(${PROJECT_NAME} Qt4::QtCore Qt4::QtDeclarative Qt4::QtGui)
-
