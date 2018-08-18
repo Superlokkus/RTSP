@@ -6,6 +6,7 @@
 #include <QtGui>
 #include <QDockWidget>
 #include <string>
+#include <iostream>
 
 #include <boost/log/trivial.hpp>
 
@@ -16,7 +17,13 @@ class rtsp_gui_widget : public QMainWindow {
 Q_OBJECT
 
 public:
-    rtsp_gui_widget()
+    enum struct application_mode {
+        none,
+        server,
+        client,
+    };
+
+    rtsp_gui_widget(application_mode preselection = application_mode::none)
             : QMainWindow() {
         auto toolbar = new QToolBar;
         this->addToolBar(toolbar);
@@ -27,6 +34,10 @@ public:
 
         this->setCentralWidget(nullptr);
 
+        if (preselection == application_mode::client)
+            show_client_page();
+        else if (preselection == application_mode::server)
+            show_server_page();
     }
 
 public slots:
@@ -44,7 +55,18 @@ public slots:
 int main(int argc, char *argv[]) {
     QApplication this_application(argc, argv);
 
-    auto window = new rtsp_gui_widget;
+    auto preselection{rtsp_gui_widget::application_mode::none};
+    if (argc > 1) {
+        const std::string first_flag{argv[1]};
+        if (first_flag == "server")
+            preselection = rtsp_gui_widget::application_mode::server;
+        else if (first_flag == "client")
+            preselection = rtsp_gui_widget::application_mode::client;
+        else
+            std::cerr << "Usage: " << argv[0] << " <application mode>\n" <<
+                      "<application mode> = \"server\" | \"client\"" << "\n";
+    }
+    auto window = new rtsp_gui_widget(preselection);
 
     window->show();
 
