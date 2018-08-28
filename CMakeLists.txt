@@ -3,14 +3,14 @@ project(rtsp_gui VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 14)
 
+set(TEST_ENABLED TRUE CACHE BOOL "Tests are enabled")
+
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 find_package(Boost COMPONENTS log REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 add_subdirectory(src/streaming_lib)
 add_subdirectory(src/boost_network_adapter)
-
-set(TEST_ENABLED TRUE CACHE BOOL "Tests are enabled")
 if (${TEST_ENABLED})
     enable_testing()
     add_subdirectory(test)
