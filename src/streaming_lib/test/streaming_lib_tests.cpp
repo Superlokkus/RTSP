@@ -4,6 +4,7 @@
 
 #include <rtsp_parser.hpp>
 #include <string>
+#include <iterator>
 #include <vector>
 
 
@@ -11,11 +12,11 @@ BOOST_AUTO_TEST_SUITE(rtsp)
 
     BOOST_AUTO_TEST_SUITE(rtsp_response)
         struct rtsp_phrases_fixture {
-            std::string ok_response{"RTSP/1.0 200  OK"};
-            std::string ok_response_with_crlf{"RTSP/1.0 200  OK\r\n"};
-            std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200  OK"};
-            std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK"};
-            std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK"};
+            std::string ok_response{"RTSP/1.0\t200 \t  OK"};
+            std::string ok_response_with_crlf{"RTSP/1.0\t200 \t  OK\r\n"};
+            std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200\tOK\r\n"};
+            std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK\r\n"};
+            std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n"};
             std::string pause_request{
                     "PAUSE rtsp://audio.example.com/twister/audio.en/lofi RTSP/1.0\r\nSession: 4231\r\nCseq: 3\r\nRange: npt=37"};
             std::vector<std::string> invalid_stuff{
@@ -41,12 +42,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
         BOOST_FIXTURE_TEST_SUITE(rtsp_response_startline, rtsp_phrases_fixture)
             BOOST_AUTO_TEST_CASE(ok_response_test) {
                 parse_phrase(ok_response);
-                BOOST_CHECK(success);
-                BOOST_CHECK(begin == end);
-                BOOST_CHECK_EQUAL(response.rtsp_version_major, "1");
-                BOOST_CHECK_EQUAL(response.rtsp_version_minor, "0");
-                BOOST_CHECK_EQUAL(response.status_code, "200");
-                BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+                BOOST_CHECK(!success);
             }
 
             BOOST_AUTO_TEST_CASE(ok_response_with_crlf_test) {

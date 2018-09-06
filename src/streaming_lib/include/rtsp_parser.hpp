@@ -42,7 +42,8 @@ namespace rtsp {
             quoted_string %= lexeme['"' >> +(ns::char_ - '"') >> '"'];
             start %= lit("RTSP/") >> +ns::digit >> "." >> +ns::digit >> omit[+ns::space]
                     >> repeat(3)[ns::digit] >> omit[+ns::space]
-                    >> *(ns::char_ - (lit("\r") | lit("\n")));
+                    >> *(ns::char_ - (lit("\r") | lit("\n")))
+                    >> lit("\r\n");
         }
 
         boost::spirit::qi::rule<Iterator, std::string()> quoted_string;
