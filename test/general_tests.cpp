@@ -3,7 +3,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include <boost_network_adapter.hpp>
-#include <rtsp_parser.hpp>
+#include <rtsp_request.hpp>
 
 BOOST_AUTO_TEST_SUITE(test_suite)
 

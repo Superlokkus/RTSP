@@ -2,7 +2,7 @@
 
 #include <boost/test/included/unit_test.hpp>
 
-#include <rtsp_parser.hpp>
+#include <rtsp_request.hpp>
 #include <string>
 #include <iterator>
 #include <vector>
@@ -111,6 +111,13 @@ BOOST_AUTO_TEST_SUITE(rtsp)
             }
 
         BOOST_AUTO_TEST_SUITE_END()
+
+        BOOST_AUTO_TEST_CASE(gen) {
+            rtsp::response response{1,1,200,"OK"};
+            std::string output;
+            rtsp::generate_response(std::back_inserter(output), response);
+            BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n");
+        }
 
     BOOST_AUTO_TEST_SUITE_END()
 

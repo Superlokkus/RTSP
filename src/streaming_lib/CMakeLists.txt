@@ -4,8 +4,8 @@ project(streaming_lib VERSION 1.0)
 set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/src/streaming_lib.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/streaming_lib.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_parser.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_parser.hpp)
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_request.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_request.hpp)
 
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_implementation_files})

@@ -1,4 +1,4 @@
-/*! @file rtsp_parser.hpp
+/*! @file rtsp_request.hpp
  *
  */
 
@@ -9,7 +9,7 @@
 #include <cstdint>
 
 #include <boost/spirit/include/qi.hpp>
-
+#include <boost/spirit/include/karma.hpp>
 
 namespace rtsp {
     struct request {
@@ -22,6 +22,7 @@ namespace rtsp {
     };
     using message = boost::variant<request, response>;
 }
+
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::response,
         (uint_fast16_t, rtsp_version_major)
@@ -57,6 +58,16 @@ namespace rtsp {
         boost::spirit::qi::rule<Iterator, response()> start;
 
     };
+
+    template <typename OutputIterator>
+    bool generate_response(OutputIterator sink, const response& reponse)
+    {
+        using ::boost::spirit::karma::lit;
+        using ::boost::spirit::karma::uint_;
+        using ::boost::spirit::karma::string;
+
+        return boost::spirit::karma::generate(sink, lit("RTSP/") << uint_ << "." << uint_ << " " << uint_ << " " << string << "\r\n", reponse);
+    }
 }
 
 
