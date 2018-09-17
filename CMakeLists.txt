@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0)
-project(rtsp_gui VERSION 1.0)
+project(rtsp VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 14)
 
@@ -16,6 +16,12 @@ if (${TEST_ENABLED})
     add_subdirectory(test)
 endif ()
 
+add_executable(rtsp_server_standalone src/rtsp_server_standalone.cpp)
+
+target_link_libraries(rtsp_server_standalone
+        ${Boost_LIBRARIES}
+        streaming_lib)
+
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -30,9 +36,9 @@ include_directories(${Qt_INCLUDE_DIR})
 set(gui_source_files
         src/rtsp_gui.cpp)
 
-add_executable(${PROJECT_NAME} ${gui_source_files})
+add_executable(rtsp_gui ${gui_source_files})
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(rtsp_gui
         Qt4::QtCore Qt4::QtDeclarative Qt4::QtGui Qt4::QtNetwork
         ${Boost_LIBRARIES}
         streaming_lib)

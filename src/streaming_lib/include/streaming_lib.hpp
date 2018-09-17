@@ -7,17 +7,23 @@
 
 #include <cstdint>
 #include <string>
+#include <memory>
+#include <functional>
 
 namespace rtsp {
-    using port_number = uint16_t;
-    using path = std::string;
-    using inet_adress = std::string;
+    class rtsp_server_;
     struct rtsp_server final {
-        rtsp_server(path video_file_directory, port_number udp_port = 554);
+        explicit rtsp_server(std::string video_file_directory, uint16_t udp_port = 554,
+                             std::function<void(std::exception &)> error_handler = [](auto) {});
+
+        ~rtsp_server();
+
+    private:
+        std::unique_ptr<rtsp_server_> rtsp_server_;
     };
 
     struct rtsp_client final {
-        rtsp_client(inet_adress host, port_number host_port, path video_file);
+        explicit rtsp_client(std::string host, uint16_t host_port, std::string video_file);
     };
 }
 
