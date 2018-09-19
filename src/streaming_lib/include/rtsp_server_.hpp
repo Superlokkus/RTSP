@@ -10,6 +10,8 @@
 #include <thread>
 #include <vector>
 #include <functional>
+#include <memory>
+#include <tuple>
 
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 
@@ -43,10 +45,23 @@ namespace rtsp {
         boost::asio::io_context io_context_;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
         std::vector<std::thread> io_run_threads_;
-        boost::asio::ip::udp::socket udp_socket_;
+
+        using udp_buffer = std::array<char, 0xFFFF>;
+        using shared_udp_socket = std::tuple<boost::asio::ip::udp::socket,
+                boost::asio::io_context::strand,
+                udp_buffer,
+                boost::asio::ip::udp::endpoint>;
+        shared_udp_socket udp_v4_socket_;
         const std::function<void(std::exception &)> error_handler_;
 
-        void io_run_loop();
+        static void
+        io_run_loop(boost::asio::io_context &context, const std::function<void(std::exception &)> &error_handler);
+
+        static void handle_incoming_udp_traffic(const boost::system::error_code &error,
+                                                std::size_t received_bytes,
+                                                shared_udp_socket &incoming_socket);
+
+        static void handle_new_request(std::shared_ptr<std::vector<char>> data);
     };
 }
 

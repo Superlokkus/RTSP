@@ -8,7 +8,7 @@ set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_request.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_server_.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_server_.cpp
-        )
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_session.hpp)
 
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_implementation_files})
