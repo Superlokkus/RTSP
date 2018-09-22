@@ -62,7 +62,8 @@ namespace rtsp {
                                                 std::size_t received_bytes,
                                                 shared_udp_socket &incoming_socket);
 
-        static void handle_new_request(std::shared_ptr<std::vector<char>> data);
+        static void handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
+                                                shared_udp_socket &socket_received_from);
     };
 }
 

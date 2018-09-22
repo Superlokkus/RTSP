@@ -91,7 +91,9 @@ void rtsp::rtsp_server_::handle_incoming_udp_traffic(const boost::system::error_
 
     std::copy_n(std::get<2>(incoming_socket).cbegin(), received_bytes, std::back_inserter(*data));
 
-    handle_new_request(data);
+    boost::asio::post(std::bind(&rtsp::rtsp_server_::handle_new_incoming_message,
+                                data, std::ref(incoming_socket)
+    ));
 
     std::get<0>(incoming_socket).async_receive_from(boost::asio::buffer(std::get<2>(incoming_socket)),
                                                     std::get<3>(incoming_socket),
@@ -104,7 +106,8 @@ void rtsp::rtsp_server_::handle_incoming_udp_traffic(const boost::system::error_
 
 }
 
-void rtsp::rtsp_server_::handle_new_request(std::shared_ptr<std::vector<char>> data) {
-    std::move(data->begin(), data->end(), std::ostream_iterator<char>(std::cout));
+void rtsp::rtsp_server_::handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
+                                                     shared_udp_socket &socket_received_from) {
+    std::move(message->begin(), message->end(), std::ostream_iterator<char>(std::cout));
     std::cout << std::endl;
 }
