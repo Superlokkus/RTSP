@@ -20,6 +20,14 @@ rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
                   udp_buffer{},
                   boost::asio::ip::udp::endpoint{}
           )},
+          udp_v6_socket_{std::forward_as_tuple(
+                  boost::asio::ip::udp::socket{io_context_,
+                                               boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(),
+                                                                              udp_port_number}},
+                  boost::asio::io_context::strand{io_context_},
+                  udp_buffer{},
+                  boost::asio::ip::udp::endpoint{}
+          )},
           error_handler_{std::move(error_handler)} {
     if (!fileapi::exists(ressource_root_))
         throw std::runtime_error("Ressource root not existing");
@@ -40,6 +48,15 @@ rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
                                                            std::placeholders::_1,
                                                            std::placeholders::_2,
                                                            std::ref(udp_v4_socket_)
+                                                   )));
+
+    std::get<0>(udp_v6_socket_).async_receive_from(boost::asio::buffer(std::get<2>(udp_v6_socket_)),
+                                                   std::get<3>(udp_v6_socket_),
+                                                   boost::asio::bind_executor(std::get<1>(udp_v6_socket_), std::bind(
+                                                           &rtsp::rtsp_server_::handle_incoming_udp_traffic,
+                                                           std::placeholders::_1,
+                                                           std::placeholders::_2,
+                                                           std::ref(udp_v6_socket_)
                                                    )));
 
 

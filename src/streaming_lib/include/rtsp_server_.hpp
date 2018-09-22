@@ -52,6 +52,7 @@ namespace rtsp {
                 udp_buffer,
                 boost::asio::ip::udp::endpoint>;
         shared_udp_socket udp_v4_socket_;
+        shared_udp_socket udp_v6_socket_;
         const std::function<void(std::exception &)> error_handler_;
 
         static void
