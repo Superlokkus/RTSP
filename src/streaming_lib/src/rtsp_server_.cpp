@@ -47,6 +47,7 @@ rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
 
 rtsp::rtsp_server_::~rtsp_server_() {
     work_guard_.reset();
+    io_context_.stop();
     std::for_each(this->io_run_threads_.begin(), this->io_run_threads_.end(), [](auto &thread) { thread.join(); });
 }
 

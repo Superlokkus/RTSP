@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <iostream>
 
 #include <boost/log/trivial.hpp>
 
@@ -27,7 +28,12 @@ int main(int argc, char *argv[]) {
         BOOST_LOG_TRIVIAL(info) << "Using \"" << path << "\" as ressource path";
         BOOST_LOG_TRIVIAL(info) << "rtsp_server listing on port: " << port_number;
 
-        while (true) {};
+        for (std::string input; std::getline(std::cin, input);) {
+            if (input == "quit")
+                break;
+            std::cout << "Enter quit to exit" << std::endl;
+        };
+        std::cout << "Quitting" << std::endl;
     } catch (std::exception &e) {
         BOOST_LOG_TRIVIAL(fatal) << "Exception in main: " << e.what();
         throw;
