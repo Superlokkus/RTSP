@@ -6,8 +6,28 @@
 #include <algorithm>
 #include <iterator>
 
+struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_connection> {
+    tcp_connection(boost::asio::io_context &io_context)
+            : socket_(io_context) {
+
+    }
+
+    boost::asio::ip::tcp::socket &socket() {
+        return socket_;
+    }
+
+    void start() {
+        std::cout << "New connection" << std::endl;
+        boost::asio::ip::tcp::iostream stream(std::move(this->socket_));
+        std::cout << stream.rdbuf();
+    }
+
+private:
+    boost::asio::ip::tcp::socket socket_;
+};
+
 rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
-                                 uint16_t udp_port_number,
+                                 uint16_t port_number,
                                  std::function<void(std::exception &)> error_handler)
         : ressource_root_{std::move(ressource_root)},
           io_context_{BOOST_ASIO_CONCURRENCY_HINT_SAFE},
@@ -15,7 +35,7 @@ rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
           udp_v4_socket_{std::forward_as_tuple(
                   boost::asio::ip::udp::socket{io_context_,
                                                boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v4(),
-                                                                              udp_port_number}},
+                                                                              port_number}},
                   boost::asio::io_context::strand{io_context_},
                   udp_buffer{},
                   boost::asio::ip::udp::endpoint{}
@@ -23,12 +43,15 @@ rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
           udp_v6_socket_{std::forward_as_tuple(
                   boost::asio::ip::udp::socket{io_context_,
                                                boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(),
-                                                                              udp_port_number}},
+                                                                              port_number}},
                   boost::asio::io_context::strand{io_context_},
                   udp_buffer{},
                   boost::asio::ip::udp::endpoint{}
           )},
+          tcp_v4_acceptor_{io_context_, boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v4(), port_number}},
+          tcp_v6_acceptor_{io_context_, boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v6(), port_number}},
           error_handler_{std::move(error_handler)} {
+
     if (!fileapi::exists(ressource_root_))
         throw std::runtime_error("Ressource root not existing");
 
@@ -41,30 +64,31 @@ rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
                                            std::ref(this->io_context_), std::ref(this->error_handler_)};
                     });
 
-    std::get<0>(udp_v4_socket_).async_receive_from(boost::asio::buffer(std::get<2>(udp_v4_socket_)),
-                                                   std::get<3>(udp_v4_socket_),
-                                                   boost::asio::bind_executor(std::get<1>(udp_v4_socket_), std::bind(
-                                                           &rtsp::rtsp_server_::handle_incoming_udp_traffic,
-                                                           std::placeholders::_1,
-                                                           std::placeholders::_2,
-                                                           std::ref(udp_v4_socket_)
-                                                   )));
-
-    std::get<0>(udp_v6_socket_).async_receive_from(boost::asio::buffer(std::get<2>(udp_v6_socket_)),
-                                                   std::get<3>(udp_v6_socket_),
-                                                   boost::asio::bind_executor(std::get<1>(udp_v6_socket_), std::bind(
-                                                           &rtsp::rtsp_server_::handle_incoming_udp_traffic,
-                                                           std::placeholders::_1,
-                                                           std::placeholders::_2,
-                                                           std::ref(udp_v6_socket_)
-                                                   )));
-
+    this->start_async_receive(this->udp_v4_socket_);
+    this->start_async_receive(this->udp_v6_socket_);
+    this->start_async_receive(this->tcp_v4_acceptor_);
+    this->start_async_receive(this->tcp_v6_acceptor_);
 
 }
 
 rtsp::rtsp_server_::~rtsp_server_() {
     work_guard_.reset();
     io_context_.stop();
+    std::for_each(this->io_run_threads_.begin(), this->io_run_threads_.end(), [](auto &thread) {
+        if (thread.joinable()) thread.join();
+    });
+}
+
+void rtsp::rtsp_server_::graceful_shutdown() {
+    this->work_guard_.reset();
+    this->tcp_v4_acceptor_.close();
+    this->tcp_v6_acceptor_.close();
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(std::get<1>(this->udp_v4_socket_), [this]() {
+        std::get<0>(this->udp_v4_socket_).close();
+    }));
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(std::get<1>(this->udp_v6_socket_), [this]() {
+        std::get<0>(this->udp_v6_socket_).close();
+    }));
     std::for_each(this->io_run_threads_.begin(), this->io_run_threads_.end(), [](auto &thread) { thread.join(); });
 }
 
@@ -81,6 +105,35 @@ void rtsp::rtsp_server_::io_run_loop(boost::asio::io_context &context,
 
 }
 
+void rtsp::rtsp_server_::start_async_receive(rtsp::rtsp_server_::shared_udp_socket &socket) {
+    std::get<0>(socket).async_receive_from(boost::asio::buffer(std::get<2>(socket)),
+                                           std::get<3>(socket),
+                                           boost::asio::bind_executor(std::get<1>(socket), std::bind(
+                                                   &rtsp::rtsp_server_::handle_incoming_udp_traffic,
+                                                   std::placeholders::_1,
+                                                   std::placeholders::_2,
+                                                   std::ref(socket)
+                                           )));
+}
+
+void rtsp::rtsp_server_::start_async_receive(boost::asio::ip::tcp::acceptor &acceptor) {
+    auto new_connection = std::make_shared<tcp_connection>(acceptor.get_io_context());
+    acceptor.async_accept(new_connection->socket(),
+                          std::bind(&rtsp_server_::handle_new_tcp_connection, std::placeholders::_1,
+                                    std::ref(acceptor),
+                                    new_connection)
+    );
+}
+
+void rtsp::rtsp_server_::handle_new_tcp_connection(const boost::system::error_code &error,
+                                                   boost::asio::ip::tcp::acceptor &acceptor,
+                                                   std::shared_ptr<tcp_connection> new_connection) {
+    if (error)
+        throw std::runtime_error(error.message());
+    new_connection->start();
+    start_async_receive(acceptor);
+}
+
 void rtsp::rtsp_server_::handle_incoming_udp_traffic(const boost::system::error_code &error,
                                                      std::size_t received_bytes,
                                                      rtsp::rtsp_server_::shared_udp_socket &incoming_socket) {
@@ -91,19 +144,12 @@ void rtsp::rtsp_server_::handle_incoming_udp_traffic(const boost::system::error_
 
     std::copy_n(std::get<2>(incoming_socket).cbegin(), received_bytes, std::back_inserter(*data));
 
-    boost::asio::post(std::bind(&rtsp::rtsp_server_::handle_new_incoming_message,
-                                data, std::ref(incoming_socket)
-    ));
+    boost::asio::post(std::get<1>(incoming_socket).get_io_context(),
+                      std::bind(&rtsp::rtsp_server_::handle_new_incoming_message,
+                                data, std::ref(incoming_socket))
+    );
 
-    std::get<0>(incoming_socket).async_receive_from(boost::asio::buffer(std::get<2>(incoming_socket)),
-                                                    std::get<3>(incoming_socket),
-                                                    boost::asio::bind_executor(std::get<1>(incoming_socket), std::bind(
-                                                            &rtsp::rtsp_server_::handle_incoming_udp_traffic,
-                                                            std::placeholders::_1,
-                                                            std::placeholders::_2,
-                                                            std::ref(incoming_socket)
-                                                    )));
-
+    start_async_receive(incoming_socket);
 }
 
 void rtsp::rtsp_server_::handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,

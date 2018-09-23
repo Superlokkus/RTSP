@@ -27,18 +27,26 @@ namespace rtsp {
     public:
         /*!
          * @param ressource_root Directory which will be the root of the servers rtsp url absolute path
-         * @param udp_port_number number to listen for new connections
-         * @param error_handler Callback if a connection handler throws an error (for logging purposes), must be thread safe
+         * @param port_number number to listen for new connections
+         * @param error_handler Callback if a connection handler throws an
+         * error (for logging purposes), must be thread safe
          * @warning error_handler Can be called by multiple threads concurrently
          * @throws std::runtime_error When @ref ressource_root can not be opend
          * @throws std::exception For errors due to ressource allocation
          */
         rtsp_server_(fileapi::path ressource_root,
-                     uint16_t udp_port_number = 554,
+                     uint16_t port_number = 554,
                      std::function<void(std::exception &)> error_handler = [](auto) {});
 
 
+        /*! @brief Shutdowns the server as fast as possible
+         */
         ~rtsp_server_();
+
+        /*! @brief Initiates a graceful shutdown and blocks until done
+         * Graceful means that responses to already received requests will be send, and tcp connections are closed
+         */
+        void graceful_shutdown();
 
     private:
         fileapi::path ressource_root_;
@@ -51,8 +59,12 @@ namespace rtsp {
                 boost::asio::io_context::strand,
                 udp_buffer,
                 boost::asio::ip::udp::endpoint>;
+        struct tcp_connection;
+
         shared_udp_socket udp_v4_socket_;
         shared_udp_socket udp_v6_socket_;
+        boost::asio::ip::tcp::acceptor tcp_v4_acceptor_;
+        boost::asio::ip::tcp::acceptor tcp_v6_acceptor_;
         const std::function<void(std::exception &)> error_handler_;
 
         static void
@@ -62,8 +74,16 @@ namespace rtsp {
                                                 std::size_t received_bytes,
                                                 shared_udp_socket &incoming_socket);
 
+        static void handle_new_tcp_connection(const boost::system::error_code &error,
+                                              boost::asio::ip::tcp::acceptor &acceptor,
+                                              std::shared_ptr<tcp_connection> new_connection);
+
         static void handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
                                                 shared_udp_socket &socket_received_from);
+
+        static void start_async_receive(shared_udp_socket &socket);
+
+        static void start_async_receive(boost::asio::ip::tcp::acceptor &acceptor);
     };
 }
 

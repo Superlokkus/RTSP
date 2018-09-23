@@ -29,11 +29,13 @@ int main(int argc, char *argv[]) {
         BOOST_LOG_TRIVIAL(info) << "rtsp_server listing on port: " << port_number;
 
         for (std::string input; std::getline(std::cin, input);) {
-            if (input == "quit")
+            if (input == "quit") {
+                std::cout << "Quitting" << std::endl;
+                server.graceful_shutdown();
                 break;
+            }
             std::cout << "Enter quit to exit" << std::endl;
         };
-        std::cout << "Quitting" << std::endl;
     } catch (std::exception &e) {
         BOOST_LOG_TRIVIAL(fatal) << "Exception in main: " << e.what();
         throw;
