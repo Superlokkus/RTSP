@@ -10,32 +10,40 @@
 
 BOOST_AUTO_TEST_SUITE(rtsp)
 
-    BOOST_AUTO_TEST_SUITE(rtsp_response)
-        struct rtsp_phrases_fixture {
-            std::string ok_response{"RTSP/1.0\t200 \t  OK"};
-            std::string ok_response_with_crlf{"RTSP/1.0\t200 \t  OK\r\n"};
-            std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200\tOK\r\n"};
-            std::string ok_rtsp25_19_repsonse{"RTSP/25.19 200\tOK\r\n"};
-            std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK\r\n"};
-            std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n"};
-            std::string pause_request{
-                    "PAUSE rtsp://audio.example.com/twister/audio.en/lofi RTSP/1.0\r\nSession: 4231\r\nCseq: 3\r\nRange: npt=37"};
-            std::vector<std::string> invalid_stuff{
-                    {"oijsdisdjlisdfjlrur93209p831§\"§=)§"},
-                    {"\n\r fajfajkj \n\n\r\r\n"},
-                    {"\r\n afsfas3244afs"},
-                    {" \r\n"},
-                    {"jjlfsjflsjkl"},
-                    {"RTSP/1.0\t2000 \t  OK\r\n"},
-                    {"RTSP/1.0\t20 \t  OK\r\n"},
-                    {"RTSP/.0\t200 \t  OK\r\n"},
-                    {"RTSP/ \t200 \t  OK\r\n"}
-            };
-            std::string::const_iterator begin{};
-            std::string::const_iterator end{};
-            rtsp::response response{};
-            bool success{false};
+    template<typename RTSP_MESSAGE_TYPE>
+    struct rtsp_phrases_fixture {
+        std::string ok_response{"RTSP/1.0\t200 \t  OK"};
+        std::string ok_response_with_crlf{"RTSP/1.0\t200 \t  OK\r\n"};
+        std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200\tOK\r\n"};
+        std::string ok_rtsp25_19_repsonse{"RTSP/25.19 200\tOK\r\n"};
+        std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK\r\n"};
+        std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n"};
+        std::string pause_request{std::string{
+                "PAUSE rtsp://audio.example.com/twister/audio.en/lofi RTSP/1.0\r\n"} +
+                                  "Session: 4231\r\nCseq: 3\r\nRange: npt=37\r\n\r\n"};
+        std::string setup_request{
+                "SETUP rtsp://example.com/foo/bar/baz.rm RTSP/1.0\r\n\r\n"
+        };
+        std::vector<std::string> invalid_stuff{
+                {"oijsdisdjlisdfjlrur93209p831§\"§=)§"},
+                {"\n\r fajfajkj \n\n\r\r\n"},
+                {"\r\n afsfas3244afs"},
+                {" \r\n"},
+                {"jjlfsjflsjkl"},
+                {"RTSP/1.0\t2000 \t  OK\r\n"},
+                {"RTSP/1.0\t20 \t  OK\r\n"},
+                {"RTSP/.0\t200 \t  OK\r\n"},
+                {"RTSP/ \t200 \t  OK\r\n"}
+        };
+        std::string::const_iterator begin{};
+        std::string::const_iterator end{};
+        bool success{false};
+    };
 
+    BOOST_AUTO_TEST_SUITE(rtsp_response)
+
+        struct rtsp_reponse_fixture : rtsp_phrases_fixture<rtsp_reponse_fixture> {
+            rtsp::response response{};
             void parse_phrase(const std::string &phrase) {
                 rtsp::rtsp_response_grammar<std::string::const_iterator> response_grammar{};
                 begin = phrase.cbegin();
@@ -44,7 +52,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                                                           boost::spirit::ascii::space, response);
             }
         };
-        BOOST_FIXTURE_TEST_SUITE(rtsp_response_startline, rtsp_phrases_fixture)
+        BOOST_FIXTURE_TEST_SUITE(rtsp_response_startline, rtsp_reponse_fixture)
             BOOST_AUTO_TEST_CASE(ok_response_test) {
                 parse_phrase(ok_response);
                 BOOST_CHECK(!success);
@@ -117,6 +125,39 @@ BOOST_AUTO_TEST_SUITE(rtsp)
             std::string output;
             rtsp::generate_response(std::back_inserter(output), response);
             BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n");
+        }
+
+    BOOST_AUTO_TEST_SUITE_END()
+
+    BOOST_AUTO_TEST_SUITE(rtsp_request)
+
+        struct rtsp_request_phrases_fixture : rtsp_phrases_fixture<rtsp_request_phrases_fixture> {
+
+            rtsp::request request{};
+
+            void parse_phrase(const std::string &phrase) {
+                rtsp::rtsp_request_grammar<std::string::const_iterator> request_grammar{};
+                begin = phrase.cbegin();
+                end = phrase.cend();
+                success = boost::spirit::qi::phrase_parse(begin, end, request_grammar,
+                                                          boost::spirit::ascii::space, request);
+            }
+        };
+
+        BOOST_FIXTURE_TEST_SUITE(rtsp_request_startline, rtsp_request_phrases_fixture)
+
+            BOOST_AUTO_TEST_CASE(initialize_request_test) {
+                parse_phrase(setup_request);
+                BOOST_CHECK(!success);
+            }
+
+        BOOST_AUTO_TEST_SUITE_END()
+
+        BOOST_AUTO_TEST_CASE(gen) {
+            /*rtsp::request request{1,1,200,"OK"};
+            std::string output;
+            rtsp::generate_response(std::back_inserter(output), response);
+            BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n");*/
         }
 
     BOOST_AUTO_TEST_SUITE_END()
