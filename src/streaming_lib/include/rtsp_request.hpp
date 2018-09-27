@@ -93,7 +93,7 @@ namespace rtsp {
                                   >> omit[+ns::space]
                                   >> status_code<Iterator> >> omit[+ns::space]
                                   >> *(ns::char_ - (lit("\r") | lit("\n")))
-                                  >> lit("\r\n");
+                                  >> lit("\r\n") >> lit("\r\n");
         }
 
         boost::spirit::qi::rule<Iterator, response()> start;
@@ -111,15 +111,17 @@ namespace rtsp {
             using boost::spirit::qi::omit;
             using ::boost::spirit::qi::repeat;
 
-            start %= *(ns::char_ - (tspecials<Iterator> | lit("\r") | lit("\n"))) >> omit[+ns::space]
-                                                                                  >> +(ns::char_ -
-                                                                                       (lit("\r") | lit("\n") |
-                                                                                        ns::space)) >> omit[+ns::space]
-                                                                                  >> lit("RTSP/")
-                                                                                  >> at_least_one_digit<Iterator> >> "."
-                                                                                  >> at_least_one_digit<Iterator>
-                                                                                  >> lit("\r\n")
-                                                                                  >> lit("\r\n");
+            start %= *(ns::char_ -
+                       (tspecials<Iterator> | lit("\r") | lit("\n")))
+                    >> omit[+ns::space]
+                    >> +(ns::char_ -
+                         (lit("\r") | lit("\n") |
+                          ns::space)) >> omit[+ns::space]
+                    >> lit("RTSP/")
+                    >> at_least_one_digit<Iterator> >> "."
+                    >> at_least_one_digit<Iterator>
+                    >> lit("\r\n")
+                    >> lit("\r\n");
         }
 
         boost::spirit::qi::rule<Iterator, request()> start;
@@ -134,7 +136,7 @@ namespace rtsp {
         using ::boost::spirit::karma::string;
 
         return boost::spirit::karma::generate(sink, lit("RTSP/")
-                << uint_ << "." << uint_ << " " << uint_ << " " << string << "\r\n", reponse);
+                << uint_ << "." << uint_ << " " << uint_ << " " << string << "\r\n" << "\r\n", reponse);
     }
 
     template<typename OutputIterator>

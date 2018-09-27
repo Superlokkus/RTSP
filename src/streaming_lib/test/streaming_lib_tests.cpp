@@ -13,11 +13,11 @@ BOOST_AUTO_TEST_SUITE(rtsp)
     template<typename RTSP_MESSAGE_TYPE>
     struct rtsp_phrases_fixture {
         std::string ok_response{"RTSP/1.0\t200 \t  OK"};
-        std::string ok_response_with_crlf{"RTSP/1.0\t200 \t  OK\r\n"};
-        std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200\tOK\r\n"};
-        std::string ok_rtsp25_19_repsonse{"RTSP/25.19 200\tOK\r\n"};
-        std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK\r\n"};
-        std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n"};
+        std::string ok_response_with_crlf{"RTSP/1.0\t200 \t  OK\r\n\r\n"};
+        std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200\tOK\r\n\r\n"};
+        std::string ok_rtsp25_19_repsonse{"RTSP/25.19 200\tOK\r\n\r\n"};
+        std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK\r\n\r\n"};
+        std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n\r\n"};
         std::string pause_request{std::string{
                 "PAUSE rtsp://audio.example.com/twister/audio.en/lofi RTSP/1.0\r\n"} +
                                   "Session: 4231\r\nCseq: 3\r\nRange: npt=37\r\n\r\n"};
@@ -30,10 +30,10 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 {"\r\n afsfas3244afs"},
                 {" \r\n"},
                 {"jjlfsjflsjkl"},
-                {"RTSP/1.0\t2000 \t  OK\r\n"},
-                {"RTSP/1.0\t20 \t  OK\r\n"},
-                {"RTSP/.0\t200 \t  OK\r\n"},
-                {"RTSP/ \t200 \t  OK\r\n"}
+                {"RTSP/1.0\t2000 \t  OK\r\n\r\n"},
+                {"RTSP/1.0\t20 \t  OK\r\n\r\n"},
+                {"RTSP/.0\t200 \t  OK\r\n\r\n"},
+                {"RTSP/ \t200 \t  OK\r\n\r\n"}
         };
         std::string::const_iterator begin{};
         std::string::const_iterator end{};
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
             rtsp::response response{1,1,200,"OK"};
             std::string output;
             rtsp::generate_response(std::back_inserter(output), response);
-            BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n");
+            BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n\r\n");
         }
 
     BOOST_AUTO_TEST_SUITE_END()
@@ -155,6 +155,14 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 BOOST_CHECK_EQUAL(request.rtsp_version_minor, 0);
                 BOOST_CHECK_EQUAL(request.method_or_extension, "SETUP");
                 BOOST_CHECK_EQUAL(request.uri, "rtsp://example.com/foo/bar/baz.rm");
+            }
+
+            BOOST_AUTO_TEST_CASE(invalid_stuff_test) {
+                for (const auto &phrase : invalid_stuff) {
+                    BOOST_TEST_MESSAGE(phrase);
+                    parse_phrase(phrase);
+                    BOOST_CHECK(!success);
+                }
             }
 
         BOOST_AUTO_TEST_SUITE_END()
