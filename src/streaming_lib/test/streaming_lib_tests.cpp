@@ -146,18 +146,24 @@ BOOST_AUTO_TEST_SUITE(rtsp)
 
         BOOST_FIXTURE_TEST_SUITE(rtsp_request_startline, rtsp_request_phrases_fixture)
 
-            BOOST_AUTO_TEST_CASE(initialize_request_test) {
+
+            BOOST_AUTO_TEST_CASE(setup_request_test) {
                 parse_phrase(setup_request);
-                BOOST_CHECK(!success);
+                BOOST_CHECK(success);
+                BOOST_CHECK(begin == end);
+                BOOST_CHECK_EQUAL(request.rtsp_version_major, 1);
+                BOOST_CHECK_EQUAL(request.rtsp_version_minor, 0);
+                BOOST_CHECK_EQUAL(request.method_or_extension, "SETUP");
+                BOOST_CHECK_EQUAL(request.uri, "rtsp://example.com/foo/bar/baz.rm");
             }
 
         BOOST_AUTO_TEST_SUITE_END()
 
         BOOST_AUTO_TEST_CASE(gen) {
-            /*rtsp::request request{1,1,200,"OK"};
+            rtsp::request request{"PLAY", "rtspu://127.0.0.1:8888/meeti-ng.en?", 1, 0};
             std::string output;
-            rtsp::generate_response(std::back_inserter(output), response);
-            BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n");*/
+            rtsp::generate_request(std::back_inserter(output), request);
+            BOOST_CHECK_EQUAL(output, "PLAY rtspu://127.0.0.1:8888/meeti-ng.en? RTSP/1.0\r\n\r\n");
         }
 
     BOOST_AUTO_TEST_SUITE_END()

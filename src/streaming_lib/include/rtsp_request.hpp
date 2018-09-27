@@ -7,26 +7,35 @@
 
 #include <string>
 #include <cstdint>
+#include <unordered_set>
+#include <unordered_map>
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/karma.hpp>
 
 namespace rtsp {
-    enum struct method {
-        describe,
-        announce,
-        get_parameter,
-        options,
-        pause,
-        play,
-        record,
-        redirect,
-        setup,
-        set_parameter,
-        teardown,
+    using method = std::string;
+    using request_uri = std::string;
+
+    const std::unordered_set<method> rtsp_methods{
+            "DESCRIBE",
+            "ANNOUNCE",
+            "GET_PARAMETER",
+            "OPTIONS",
+            "PAUSE",
+            "PLAY",
+            "RECORD",
+            "REDIRECT",
+            "SETUP",
+            "SET_PARAMETER",
+            "TEARDOWN",
     };
 
     struct request {
+        method method_or_extension;
+        request_uri uri;
+        uint_fast16_t rtsp_version_major;
+        uint_fast16_t rtsp_version_minor;
     };
     struct response {
         uint_fast16_t rtsp_version_major;
@@ -45,7 +54,11 @@ BOOST_FUSION_ADAPT_STRUCT(
         (std::string, reason_phrase)
 )
 BOOST_FUSION_ADAPT_STRUCT(
-        rtsp::request
+        rtsp::request,
+        (rtsp::method, method_or_extension)
+                (rtsp::request_uri, uri)
+                (uint_fast16_t, rtsp_version_major)
+                (uint_fast16_t, rtsp_version_minor)
 )
 
 namespace rtsp {
@@ -61,6 +74,9 @@ namespace rtsp {
     template<typename Iterator>
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
             at_least_one_digit{::boost::spirit::qi::uint_parser<uint_fast16_t, 10, 1>()};
+    template<typename Iterator>
+    boost::spirit::qi::rule<Iterator, std::string()>
+            tspecials{ns::char_("()<>@,;:\\\"/[]?={} \t")};
 
     template<typename Iterator>
     struct rtsp_response_grammar
@@ -95,7 +111,15 @@ namespace rtsp {
             using boost::spirit::qi::omit;
             using ::boost::spirit::qi::repeat;
 
-
+            start %= *(ns::char_ - (tspecials<Iterator> | lit("\r") | lit("\n"))) >> omit[+ns::space]
+                                                                                  >> +(ns::char_ -
+                                                                                       (lit("\r") | lit("\n") |
+                                                                                        ns::space)) >> omit[+ns::space]
+                                                                                  >> lit("RTSP/")
+                                                                                  >> at_least_one_digit<Iterator> >> "."
+                                                                                  >> at_least_one_digit<Iterator>
+                                                                                  >> lit("\r\n")
+                                                                                  >> lit("\r\n");
         }
 
         boost::spirit::qi::rule<Iterator, request()> start;
@@ -119,8 +143,9 @@ namespace rtsp {
         using ::boost::spirit::karma::uint_;
         using ::boost::spirit::karma::string;
 
-        return false;
-        //return boost::spirit::karma::generate(sink, lit("\r\n"), request);
+        return boost::spirit::karma::generate(sink, string << " " << string
+                                                           << " " << lit("RTSP/") << uint_ << "." << uint_ << "\r\n"
+                                                           << "\r\n", request);
     }
 }
 
