@@ -24,6 +24,7 @@ RTSP
                               between adjacent tokens and delimiters (tspecials), without
                               changing the interpretation of a field. At least one delimiter
                               (tspecials) must exist between any two tokens,"
-- 4 RTSP Message "Methods are idempotent,
+-   4 RTSP Message "Methods are idempotent,
      unless otherwise noted."
+-   HTTP 4.2 header field ...  names are case-insensitive
 

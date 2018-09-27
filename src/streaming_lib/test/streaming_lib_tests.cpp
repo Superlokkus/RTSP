@@ -12,15 +12,16 @@ BOOST_AUTO_TEST_SUITE(rtsp)
 
     template<typename RTSP_MESSAGE_TYPE>
     struct rtsp_phrases_fixture {
-        std::string ok_response{"RTSP/1.0\t200 \t  OK"};
+        std::string ok_response{"RTSP/1.0\t200 \t  OK\r\n"};
         std::string ok_response_with_crlf{"RTSP/1.0\t200 \t  OK\r\n\r\n"};
+        std::string ok_response_with_header{ok_response + "Session: 42\r\n 31\r\nCseq: 3\r\n" + "\r\n"};
         std::string ok_rtsp2_3_repsonse{"RTSP/2.3 200\tOK\r\n\r\n"};
         std::string ok_rtsp25_19_repsonse{"RTSP/25.19 200\tOK\r\n\r\n"};
         std::string ok_http_1_1_repsonse{"HTTP/1.1 200  OK\r\n\r\n"};
         std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n\r\n"};
         std::string pause_request{std::string{
                 "PAUSE rtsp://audio.example.com/twister/audio.en/lofi RTSP/1.0\r\n"} +
-                                  "Session: 4231\r\nCseq: 3\r\nRange: npt=37\r\n\r\n"};
+                                  "Session: 4231\r\nCseq: 3\r\nRange: n\r\n pt=37\r\n\r\n"};
         std::string setup_request{
                 "SETUP rtsp://example.com/foo/bar/baz.rm RTSP/1.0\r\n\r\n"
         };
@@ -66,6 +67,18 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 BOOST_CHECK_EQUAL(response.rtsp_version_minor, 0);
                 BOOST_CHECK_EQUAL(response.status_code, 200);
                 BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+                BOOST_CHECK_EQUAL(response.headers.size(), 0);
+            }
+
+            BOOST_AUTO_TEST_CASE(ok_response_with_header_test) {
+                parse_phrase(ok_response_with_header);
+                BOOST_CHECK(success);
+                BOOST_CHECK(begin == end);
+                BOOST_CHECK_EQUAL(response.rtsp_version_major, 1);
+                BOOST_CHECK_EQUAL(response.rtsp_version_minor, 0);
+                BOOST_CHECK_EQUAL(response.status_code, 200);
+                BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+                BOOST_CHECK_EQUAL(response.headers.size(), 2);
             }
 
             BOOST_AUTO_TEST_CASE(ok_rtsp2_3_repsonse_test) {
@@ -76,6 +89,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 BOOST_CHECK_EQUAL(response.rtsp_version_minor, 3);
                 BOOST_CHECK_EQUAL(response.status_code, 200);
                 BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+                BOOST_CHECK_EQUAL(response.headers.size(), 0);
             }
 
             BOOST_AUTO_TEST_CASE(ok_rtsp25_19_repsonse_test) {
@@ -86,6 +100,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 BOOST_CHECK_EQUAL(response.rtsp_version_minor, 19);
                 BOOST_CHECK_EQUAL(response.status_code, 200);
                 BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+                BOOST_CHECK_EQUAL(response.headers.size(), 0);
             }
 
             BOOST_AUTO_TEST_CASE(ok_http_1_1_repsonse_test) {
@@ -102,6 +117,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 BOOST_CHECK_EQUAL(response.rtsp_version_minor, 1);
                 BOOST_CHECK_EQUAL(response.status_code, 200);
                 BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+                BOOST_CHECK_EQUAL(response.headers.size(), 0);
             }
 
             BOOST_AUTO_TEST_CASE(pause_request_test) {
@@ -155,6 +171,18 @@ BOOST_AUTO_TEST_SUITE(rtsp)
                 BOOST_CHECK_EQUAL(request.rtsp_version_minor, 0);
                 BOOST_CHECK_EQUAL(request.method_or_extension, "SETUP");
                 BOOST_CHECK_EQUAL(request.uri, "rtsp://example.com/foo/bar/baz.rm");
+                BOOST_CHECK_EQUAL(request.headers.size(), 0);
+            }
+
+            BOOST_AUTO_TEST_CASE(pause__request_test) {
+                parse_phrase(pause_request);
+                BOOST_CHECK(success);
+                BOOST_CHECK(begin == end);
+                BOOST_CHECK_EQUAL(request.rtsp_version_major, 1);
+                BOOST_CHECK_EQUAL(request.rtsp_version_minor, 0);
+                BOOST_CHECK_EQUAL(request.method_or_extension, "PAUSE");
+                BOOST_CHECK_EQUAL(request.uri, "rtsp://audio.example.com/twister/audio.en/lofi");
+                BOOST_CHECK_EQUAL(request.headers.size(), 3);
             }
 
             BOOST_AUTO_TEST_CASE(invalid_stuff_test) {
