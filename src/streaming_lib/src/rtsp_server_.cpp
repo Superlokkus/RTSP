@@ -2,9 +2,11 @@
  *
  */
 
-#include <rtsp_server_.hpp>
 #include <algorithm>
 #include <iterator>
+
+#include <rtsp_server_.hpp>
+#include <rtsp_server_internals.hpp>
 
 struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_connection> {
     tcp_connection(boost::asio::io_context &io_context)

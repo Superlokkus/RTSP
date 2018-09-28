@@ -27,4 +27,7 @@ RTSP
 -   4 RTSP Message "Methods are idempotent,
      unless otherwise noted."
 -   HTTP 4.2 header field ...  names are case-insensitive
+-   RTSP 9.2 Systems implementing RTSP MUST support carrying RTSP over TCP and MAY
+       support UDP. The default port for the RTSP server is 554 for both UDP
+       and TCP
 

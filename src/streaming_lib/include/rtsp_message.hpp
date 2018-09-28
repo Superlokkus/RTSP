@@ -14,9 +14,12 @@
 #include <boost/spirit/include/karma.hpp>
 
 namespace rtsp {
-    using method = std::string;
-    using request_uri = std::string;
-    using header = std::pair<std::string, std::string>;
+using char_t = char;
+using string = std::basic_string<char_t>;
+using method = string;
+using request_uri = string;
+using header = std::pair<string, string>;
+using raw_headers = std::vector<header>;
 
     const std::unordered_set<method> rtsp_methods{
             "DESCRIBE",
@@ -37,14 +40,14 @@ namespace rtsp {
         request_uri uri;
         uint_fast16_t rtsp_version_major;
         uint_fast16_t rtsp_version_minor;
-        std::vector<header> headers;
+        raw_headers headers;
     };
     struct response {
         uint_fast16_t rtsp_version_major;
         uint_fast16_t rtsp_version_minor;
         uint_fast16_t status_code;
-        std::string reason_phrase;
-        std::vector<header> headers;
+        string reason_phrase;
+        raw_headers headers;
     };
     using message = boost::variant<request, response>;
 }
@@ -54,8 +57,8 @@ BOOST_FUSION_ADAPT_STRUCT(
         (uint_fast16_t, rtsp_version_major)
         (uint_fast16_t, rtsp_version_minor)
         (uint_fast16_t, status_code)
-        (std::string, reason_phrase)
-                (std::vector<rtsp::header>, headers)
+                (rtsp::string, reason_phrase)
+                (rtsp::raw_headers, headers)
 )
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::request,
@@ -63,24 +66,24 @@ BOOST_FUSION_ADAPT_STRUCT(
                 (rtsp::request_uri, uri)
                 (uint_fast16_t, rtsp_version_major)
                 (uint_fast16_t, rtsp_version_minor)
-                (std::vector<rtsp::header>, headers)
+                (rtsp::raw_headers, headers)
 )
 
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::header,
-        (std::string, first)
-                (std::string, second)
+        (rtsp::string, first)
+                (rtsp::string, second)
 )
 
 namespace rtsp {
     namespace ns = ::boost::spirit::standard;
 
     template<typename Iterator>
-    boost::spirit::qi::rule<Iterator, std::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             ctl{ns::cntrl};
 
     template<typename Iterator>
-    boost::spirit::qi::rule<Iterator, std::string()> quoted_string{
+    boost::spirit::qi::rule<Iterator, rtsp::string()> quoted_string{
             ::boost::spirit::qi::lexeme['"' >> +(ns::char_ - (ctl<Iterator> | '"')) >> '"']};
 
     template<typename Iterator>
@@ -90,15 +93,15 @@ namespace rtsp {
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
             at_least_one_digit{::boost::spirit::qi::uint_parser<uint_fast16_t, 10, 1>()};
     template<typename Iterator>
-    boost::spirit::qi::rule<Iterator, std::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             tspecials{ns::char_("()<>@,;:\\\"/[]?={} \t")};
 
     template<typename Iterator>
-    boost::spirit::qi::rule<Iterator, std::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             token{+(ns::char_ - (tspecials<Iterator> | ctl<Iterator>))};
 
     template<typename Iterator>
-    boost::spirit::qi::rule<Iterator, std::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             header_field_body_{"header_field_body"};
 
     template<typename Iterator>
