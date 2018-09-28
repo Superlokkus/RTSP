@@ -172,6 +172,11 @@ namespace rtsp {
 
     };
 
+    template<typename OutputIterator>
+    boost::spirit::karma::rule<OutputIterator, rtsp::header> header_generator{
+            boost::spirit::karma::string << ":" << " " << boost::spirit::karma::string
+    };
+
     template <typename OutputIterator>
     bool generate_response(OutputIterator sink, const response& reponse)
     {
@@ -180,9 +185,10 @@ namespace rtsp {
         using ::boost::spirit::karma::string;
 
         return boost::spirit::karma::generate(sink, lit("RTSP/")
-                << uint_ << "." << uint_ << " " << uint_ << " " << string << "\r\n" << "\r\n", reponse);
+                << uint_ << "." << uint_ << " " << uint_ << " " << string << "\r\n"
+                << *(header_generator<OutputIterator> << "\r\n")
+                << "\r\n", reponse);
     }
-
     template<typename OutputIterator>
     bool generate_request(OutputIterator sink, const request &request) {
         using ::boost::spirit::karma::lit;
@@ -191,6 +197,7 @@ namespace rtsp {
 
         return boost::spirit::karma::generate(sink, string << " " << string
                                                            << " " << lit("RTSP/") << uint_ << "." << uint_ << "\r\n"
+                                                           << *(header_generator<OutputIterator> << "\r\n")
                                                            << "\r\n", request);
     }
 }

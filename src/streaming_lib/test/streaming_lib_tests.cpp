@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
         std::string ok_rtsp1_1_repsonse{"RTSP/1.1 200  OK\r\n\r\n"};
         std::string pause_request{std::string{
                 "PAUSE rtsp://audio.example.com/twister/audio.en/lofi RTSP/1.0\r\n"} +
-                                  "Session: 4231\r\nCseq: 3\r\nRange: n\r\n pt=37\r\n\r\n"};
+                                  "Session:  4231\r\nCseq:\t 3\r\nRange: n\r\n pt=37\r\n\r\n"};
         std::string setup_request{
                 "SETUP rtsp://example.com/foo/bar/baz.rm RTSP/1.0\r\n\r\n"
         };
@@ -45,6 +45,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
 
         struct rtsp_reponse_fixture : rtsp_phrases_fixture<rtsp_reponse_fixture> {
             rtsp::response response{};
+
             void parse_phrase(const std::string &phrase) {
                 rtsp::rtsp_response_grammar<std::string::const_iterator> response_grammar{};
                 begin = phrase.cbegin();
@@ -54,6 +55,7 @@ BOOST_AUTO_TEST_SUITE(rtsp)
             }
         };
         BOOST_FIXTURE_TEST_SUITE(rtsp_response_startline, rtsp_reponse_fixture)
+
             BOOST_AUTO_TEST_CASE(ok_response_test) {
                 parse_phrase(ok_response);
                 BOOST_CHECK(!success);
@@ -137,10 +139,24 @@ BOOST_AUTO_TEST_SUITE(rtsp)
         BOOST_AUTO_TEST_SUITE_END()
 
         BOOST_AUTO_TEST_CASE(gen) {
-            rtsp::response response{1,1,200,"OK"};
+            rtsp::response response{1, 1, 200, "OK"};
             std::string output;
             rtsp::generate_response(std::back_inserter(output), response);
             BOOST_CHECK_EQUAL(output, "RTSP/1.1 200 OK\r\n\r\n");
+        }
+
+        BOOST_AUTO_TEST_CASE(gen_with_headers) {
+            rtsp::response response{1, 1, 200, "OK", {
+                    rtsp::header{"Session", " 4231"},
+                    rtsp::header{"Cseq", "3"},
+            }};
+            std::string output;
+            rtsp::generate_response(std::back_inserter(output), response);
+            const auto expected = std::string{"RTSP/1.1 200 OK\r\n"}
+                                  + "Session:  4231\r\n"
+                                  + "Cseq: 3\r\n"
+                                  + "\r\n";
+            BOOST_CHECK_EQUAL(output, expected);
         }
 
     BOOST_AUTO_TEST_SUITE_END()
@@ -200,6 +216,23 @@ BOOST_AUTO_TEST_SUITE(rtsp)
             std::string output;
             rtsp::generate_request(std::back_inserter(output), request);
             BOOST_CHECK_EQUAL(output, "PLAY rtspu://127.0.0.1:8888/meeti-ng.en? RTSP/1.0\r\n\r\n");
+        }
+
+        BOOST_AUTO_TEST_CASE(gen_with_headers) {
+            rtsp::request request{"PLAY", "rtspu://127.0.0.1:8888/meeti-ng.en?", 1, 0, {
+                    rtsp::header{"Session", " 4231"},
+                    rtsp::header{"Cseq", "3"},
+                    rtsp::header{"Range", "npt=37"}
+            }};
+            std::string output;
+            rtsp::generate_request(std::back_inserter(output), request);
+            const auto expected = std::string{"PLAY rtspu://127.0.0.1:8888/meeti-ng.en? RTSP/1.0\r\n"}
+                                  + "Session:  4231\r\n"
+                                  + "Cseq: 3\r\n"
+                                  + "Range: npt=37\r\n"
+                                  + "\r\n";
+            BOOST_CHECK_EQUAL(output, expected);
+
         }
 
     BOOST_AUTO_TEST_SUITE_END()
