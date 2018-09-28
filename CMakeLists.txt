@@ -10,7 +10,7 @@ find_package(Boost COMPONENTS log REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 add_subdirectory(src/streaming_lib)
-add_subdirectory(src/boost_network_adapter)
+
 if (${TEST_ENABLED})
     enable_testing()
     add_subdirectory(test)
