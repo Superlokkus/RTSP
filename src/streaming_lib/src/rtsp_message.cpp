@@ -1,8 +1,8 @@
-/*! @file rtsp_request.cpp
+/*! @file rtsp_message.cpp
  *
  */
 
-#include <rtsp_request.hpp>
+#include <rtsp_message.hpp>
 
 #include <iterator>
 

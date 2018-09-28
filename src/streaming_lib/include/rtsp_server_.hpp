@@ -18,7 +18,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
 
-#include <rtsp_request.hpp>
+#include <rtsp_message.hpp>
 
 namespace rtsp {
     namespace fileapi = boost::filesystem;

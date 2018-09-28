@@ -2,7 +2,7 @@
 
 #include <boost/test/included/unit_test.hpp>
 
-#include <rtsp_request.hpp>
+#include <rtsp_message.hpp>
 #include <string>
 #include <iterator>
 #include <vector>

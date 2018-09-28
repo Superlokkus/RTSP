@@ -1,9 +1,9 @@
-/*! @file rtsp_request.hpp
+/*! @file rtsp_message.hpp
  *
  */
 
-#ifndef RTSP_GUI_RTSP_PARSER_HPP
-#define RTSP_GUI_RTSP_PARSER_HPP
+#ifndef STREAMING_LIB_RTSP_MESSAGE_HPP
+#define STREAMING_LIB_RTSP_MESSAGE_HPP
 
 #include <string>
 #include <cstdint>
@@ -203,4 +203,4 @@ namespace rtsp {
 }
 
 
-#endif //RTSP_GUI_RTSP_PARSER_HPP
+#endif //STREAMING_LIB_RTSP_MESSAGE_HPP
