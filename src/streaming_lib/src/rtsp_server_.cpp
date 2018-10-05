@@ -6,11 +6,14 @@
 #include <iterator>
 
 #include <rtsp_server_.hpp>
+#include <boost/spirit/include/qi_match.hpp>
+#include <boost/spirit/include/support_multi_pass.hpp>
 
 struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_connection> {
     tcp_connection() = delete;
-    tcp_connection(boost::asio::io_context &io_context)
-            : socket_(io_context) {
+
+    tcp_connection(boost::asio::io_context &io_context, server::rtsp_server_state &server_state)
+            : socket_(io_context), server_state_(server_state) {
 
     }
 
@@ -19,13 +22,60 @@ struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_con
     }
 
     void start() {
-        std::cout << "New connection" << std::endl;
-        boost::asio::ip::tcp::iostream stream(std::move(this->socket_));
-        std::cout << stream.rdbuf();
+        boost::asio::async_read_until(this->socket_, this->in_streambuf_, boost::asio::string_view{"\r\n\r\n"},
+                                      [me = shared_from_this()](
+                                              const boost::system::error_code &error,
+                                              std::size_t bytes_transferred) {
+                                          return me->header_read(error, bytes_transferred);
+                                      });
+    }
+
+    void header_read(const boost::system::error_code &error,
+                     std::size_t bytes_transferred) {
+        if (error)
+            throw std::runtime_error{error.message()};
+
+        rtsp_request_grammar<boost::spirit::multi_pass<std::istreambuf_iterator<char>>> request_grammar{};
+        rtsp::request request;
+        std::istream stream(&this->in_streambuf_);
+        auto begin = boost::spirit::make_default_multi_pass(std::istreambuf_iterator<char>(stream));
+        const bool valid = boost::spirit::qi::phrase_parse(begin,
+                                                           boost::spirit::make_default_multi_pass(
+                                                                   std::istreambuf_iterator<char>()),
+                                                           request_grammar, ns::space, request);
+
+        rtsp::response response;
+        if (!valid) {
+            auto reason = std::string{"Bad Request"};
+            response = rtsp::response{server_state_.rtsp_major_version, server_state_.rtsp_minor_version,
+                                      400, std::move(reason)};
+        } else {
+            response = server_state_.handle_incoming_request(request);
+        }
+
+        rtsp::generate_response(std::back_inserter(last_response_string_), response);
+
+        this->socket_.async_send(boost::asio::buffer(last_response_string_), [me = shared_from_this()]
+                (const boost::system::error_code &error,
+                 std::size_t bytes_transferred) {
+            return me->response_sent(error, bytes_transferred);
+        });
+    }
+
+    void response_sent(const boost::system::error_code &error,
+                       std::size_t bytes_transferred) {
+        if (error)
+            throw std::runtime_error{error.message()};
+        if (bytes_transferred != last_response_string_.size())
+            throw std::runtime_error{"TCP bytes sent not equal"};
+
     }
 
 private:
     boost::asio::ip::tcp::socket socket_;
+    boost::asio::streambuf in_streambuf_;
+    server::rtsp_server_state &server_state_;
+    std::string last_response_string_;
 };
 
 rtsp::rtsp_server_::rtsp_server_(boost::filesystem::path ressource_root,
@@ -138,9 +188,10 @@ void rtsp::rtsp_server_::start_async_send_to(rtsp::rtsp_server_::shared_udp_sock
 }
 
 void rtsp::rtsp_server_::start_async_receive(boost::asio::ip::tcp::acceptor &acceptor) {
-    auto new_connection = std::make_shared<tcp_connection>(acceptor.get_io_context());
+    auto new_connection = std::make_shared<tcp_connection>(acceptor.get_io_context(), this->server_state_);
     acceptor.async_accept(new_connection->socket(),
-                          std::bind(&rtsp_server_::handle_new_tcp_connection, std::placeholders::_1,
+                          std::bind(&rtsp_server_::handle_new_tcp_connection, this,
+                                    std::placeholders::_1,
                                     std::ref(acceptor),
                                     new_connection)
     );
