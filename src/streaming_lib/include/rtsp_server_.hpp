@@ -19,6 +19,7 @@
 #include <boost/asio.hpp>
 
 #include <rtsp_message.hpp>
+#include <rtsp_server_internals.hpp>
 
 namespace rtsp {
     namespace fileapi = boost::filesystem;
@@ -50,6 +51,7 @@ namespace rtsp {
 
     private:
         fileapi::path ressource_root_;
+        server::rtsp_server_state server_state_;
         boost::asio::io_context io_context_;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
         std::vector<std::thread> io_run_threads_;
@@ -70,18 +72,24 @@ namespace rtsp {
         static void
         io_run_loop(boost::asio::io_context &context, const std::function<void(std::exception &)> &error_handler);
 
-        static void handle_incoming_udp_traffic(const boost::system::error_code &error,
-                                                std::size_t received_bytes,
-                                                shared_udp_socket &incoming_socket);
+        void handle_incoming_udp_traffic(const boost::system::error_code &error,
+                                         std::size_t received_bytes,
+                                         shared_udp_socket &incoming_socket);
 
         static void handle_new_tcp_connection(const boost::system::error_code &error,
                                               boost::asio::ip::tcp::acceptor &acceptor,
                                               std::shared_ptr<tcp_connection> new_connection);
 
         static void handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
-                                                shared_udp_socket &socket_received_from);
+                                                shared_udp_socket &socket_received_from,
+                                                boost::asio::ip::udp::endpoint received_from_endpoint,
+                                                server::rtsp_server_state &server_state);
 
-        static void start_async_receive(shared_udp_socket &socket);
+        void start_async_receive(shared_udp_socket &socket);
+
+        static void start_async_send_to(shared_udp_socket &socket,
+                                        boost::asio::ip::udp::endpoint to_endpoint,
+                                        std::shared_ptr<std::string> message);
 
         static void start_async_receive(boost::asio::ip::tcp::acceptor &acceptor);
     };
