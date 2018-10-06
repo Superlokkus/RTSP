@@ -13,56 +13,19 @@
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/karma.hpp>
 
-namespace rtsp {
-using char_t = char;
-using string = std::basic_string<char_t>;
-using method = string;
-using request_uri = string;
-using header = std::pair<string, string>;
-using raw_headers = std::vector<header>;
-
-    const std::unordered_set<method> rtsp_methods{
-            "DESCRIBE",
-            "ANNOUNCE",
-            "GET_PARAMETER",
-            "OPTIONS",
-            "PAUSE",
-            "PLAY",
-            "RECORD",
-            "REDIRECT",
-            "SETUP",
-            "SET_PARAMETER",
-            "TEARDOWN",
-    };
-
-    struct request {
-        method method_or_extension;
-        request_uri uri;
-        uint_fast16_t rtsp_version_major;
-        uint_fast16_t rtsp_version_minor;
-        raw_headers headers;
-    };
-    struct response {
-        uint_fast16_t rtsp_version_major;
-        uint_fast16_t rtsp_version_minor;
-        uint_fast16_t status_code;
-        string reason_phrase;
-        raw_headers headers;
-    };
-    using message = boost::variant<request, response>;
-}
+#include <rtsp_definitions.hpp>
 
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::response,
         (uint_fast16_t, rtsp_version_major)
         (uint_fast16_t, rtsp_version_minor)
         (uint_fast16_t, status_code)
-                (rtsp::string, reason_phrase)
+                (rtsp::string_t, reason_phrase)
                 (rtsp::raw_headers, headers)
 )
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::request,
-        (rtsp::method, method_or_extension)
+        (rtsp::method_t, method_or_extension)
                 (rtsp::request_uri, uri)
                 (uint_fast16_t, rtsp_version_major)
                 (uint_fast16_t, rtsp_version_minor)
@@ -71,8 +34,8 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::header,
-        (rtsp::string, first)
-                (rtsp::string, second)
+        (rtsp::string_t, first)
+                (rtsp::string_t, second)
 )
 
 namespace rtsp {
@@ -81,10 +44,10 @@ namespace rtsp {
 template<typename Iterator>
 struct common_rules {
 
-    boost::spirit::qi::rule<Iterator, rtsp::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
             ctl{ns::cntrl};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string()> quoted_string{
+    boost::spirit::qi::rule<Iterator, rtsp::string_t()> quoted_string{
             ::boost::spirit::qi::lexeme['"' >> +(ns::char_ - (ctl | '"')) >> '"']};
 
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
@@ -93,13 +56,13 @@ struct common_rules {
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
             at_least_one_digit{::boost::spirit::qi::uint_parser<uint_fast16_t, 10, 1>()};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
             tspecials{ns::char_("()<>@,;:\\\"/[]?={} \t")};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
             token{+(ns::char_ - (tspecials | ctl))};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string()>
+    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
             header_field_body_{"header_field_body"};
 
     boost::spirit::qi::rule<Iterator, header()>
