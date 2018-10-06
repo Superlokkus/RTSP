@@ -12,6 +12,11 @@
 struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_connection> {
     tcp_connection() = delete;
 
+    /*! Constructs a new RTSP tcp connection
+     *
+     * @param io_context Boost asio io context to use for async calls on its socket
+     * @param server_state RTSP server state for side effects of the tcp connection
+     */
     tcp_connection(boost::asio::io_context &io_context, server::rtsp_server_state &server_state)
             : socket_(io_context), server_state_(server_state) {
 
@@ -21,6 +26,10 @@ struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_con
         return socket_;
     }
 
+    /*! @brief Starts the session by reading in the rtsp header which should be blank line terminated
+     *
+     * Calls @ref header_read as handler for the read in raw handler
+     */
     void start() {
         boost::asio::async_read_until(this->socket_, this->in_streambuf_, boost::asio::string_view{"\r\n\r\n"},
                                       [me = shared_from_this()](
@@ -30,6 +39,11 @@ struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_con
                                       });
     }
 
+    /*! @brief Parses the raw header and either sends a bad request response on failure or lets the
+     * internal server state from construction handle the response and sends it's request
+     * @param error Error from boost asio
+     * @param bytes_transferred Bytes transfered from boost asio
+     */
     void header_read(const boost::system::error_code &error,
                      std::size_t bytes_transferred) {
         if (error)
@@ -62,6 +76,11 @@ struct rtsp::rtsp_server_::tcp_connection : std::enable_shared_from_this<tcp_con
         });
     }
 
+    /*! @brief Handler stub to check for errors and upheld lifetime while sending async
+     *
+     * @param error Error from asio
+     * @param bytes_transferred Bytes sent by asio
+     */
     void response_sent(const boost::system::error_code &error,
                        std::size_t bytes_transferred) {
         if (error)
