@@ -78,43 +78,50 @@ BOOST_FUSION_ADAPT_STRUCT(
 namespace rtsp {
     namespace ns = ::boost::spirit::standard;
 
-    template<typename Iterator>
+template<typename Iterator>
+struct common_rules {
+
     boost::spirit::qi::rule<Iterator, rtsp::string()>
             ctl{ns::cntrl};
 
-    template<typename Iterator>
     boost::spirit::qi::rule<Iterator, rtsp::string()> quoted_string{
-            ::boost::spirit::qi::lexeme['"' >> +(ns::char_ - (ctl<Iterator> | '"')) >> '"']};
+            ::boost::spirit::qi::lexeme['"' >> +(ns::char_ - (ctl | '"')) >> '"']};
 
-    template<typename Iterator>
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
             status_code{::boost::spirit::qi::uint_parser<uint_fast16_t, 10, 3, 3>()};
-    template<typename Iterator>
+
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
             at_least_one_digit{::boost::spirit::qi::uint_parser<uint_fast16_t, 10, 1>()};
-    template<typename Iterator>
+
     boost::spirit::qi::rule<Iterator, rtsp::string()>
             tspecials{ns::char_("()<>@,;:\\\"/[]?={} \t")};
 
-    template<typename Iterator>
     boost::spirit::qi::rule<Iterator, rtsp::string()>
-            token{+(ns::char_ - (tspecials<Iterator> | ctl<Iterator>))};
+            token{+(ns::char_ - (tspecials | ctl))};
 
-    template<typename Iterator>
     boost::spirit::qi::rule<Iterator, rtsp::string()>
             header_field_body_{"header_field_body"};
 
-    template<typename Iterator>
     boost::spirit::qi::rule<Iterator, header()>
-            header_{+(token<Iterator>)
+            header_{+(token)
                             >> boost::spirit::qi::lit(":")
                             >> boost::spirit::qi::omit[*ns::space]
-                            >> -(header_field_body_<Iterator>)
+                            >> -(header_field_body_)
                             >> boost::spirit::qi::lit("\r\n")};
+
+    common_rules() {
+        header_field_body_ = {(quoted_string | +(ns::char_ - ctl))
+                                      >> -(boost::spirit::qi::lit("\r\n")
+                                              >> boost::spirit::qi::omit[+ns::space]
+                                              >> header_field_body_)
+        };
+    }
+};
 
     template<typename Iterator>
     struct rtsp_response_grammar
-            : ::boost::spirit::qi::grammar<Iterator, response()> {
+            : ::boost::spirit::qi::grammar<Iterator, response()>,
+              common_rules<Iterator> {
         rtsp_response_grammar() : rtsp_response_grammar::base_type(start) {
 
             using ::boost::spirit::qi::uint_parser;
@@ -122,18 +129,15 @@ namespace rtsp {
             using ::boost::spirit::qi::lit;
             using boost::spirit::qi::omit;
             using ::boost::spirit::qi::repeat;
-            header_field_body_<Iterator> = {(quoted_string<Iterator> | +(ns::char_ - ctl<Iterator>))
-                                                    >> -(boost::spirit::qi::lit("\r\n")
-                                                            >> boost::spirit::qi::omit[+ns::space]
-                                                            >> header_field_body_<Iterator>)
-            };
 
-            start %= lit("RTSP/") >> at_least_one_digit<Iterator> >> "." >> at_least_one_digit<Iterator>
+
+            start %= lit("RTSP/") >> common_rules<Iterator>::at_least_one_digit >> "."
+                                  >> common_rules<Iterator>::at_least_one_digit
                                   >> omit[+ns::space]
-                                  >> status_code<Iterator> >> omit[+ns::space]
+                                  >> common_rules<Iterator>::status_code >> omit[+ns::space]
                                   >> *(ns::char_ - (lit("\r") | lit("\n")))
                                   >> lit("\r\n")
-                                  >> *(header_<Iterator>)
+                                  >> *(common_rules<Iterator>::header_)
                                   >> lit("\r\n");
         }
 
@@ -143,7 +147,8 @@ namespace rtsp {
 
     template<typename Iterator>
     struct rtsp_request_grammar
-            : ::boost::spirit::qi::grammar<Iterator, request()> {
+            : ::boost::spirit::qi::grammar<Iterator, request()>,
+              common_rules<Iterator> {
         rtsp_request_grammar() : rtsp_request_grammar::base_type(start) {
 
             using ::boost::spirit::qi::uint_parser;
@@ -152,22 +157,17 @@ namespace rtsp {
             using boost::spirit::qi::omit;
             using ::boost::spirit::qi::repeat;
 
-            header_field_body_<Iterator> = {(quoted_string<Iterator> | +(ns::char_ - ctl<Iterator>))
-                                                    >> -(boost::spirit::qi::lit("\r\n")
-                                                            >> boost::spirit::qi::omit[+ns::space]
-                                                            >> header_field_body_<Iterator>)
-            };
 
-            start %= +(token<Iterator>)
+            start %= +(common_rules<Iterator>::token)
                     >> omit[+ns::space]
                     >> +(ns::char_ -
                          (lit("\r") | lit("\n") |
                           ns::space)) >> omit[+ns::space]
                     >> lit("RTSP/")
-                    >> at_least_one_digit<Iterator> >> "."
-                    >> at_least_one_digit<Iterator>
+                    >> common_rules<Iterator>::at_least_one_digit >> "."
+                    >> common_rules<Iterator>::at_least_one_digit
                     >> lit("\r\n")
-                    >> *(header_<Iterator>)
+                    >> *(common_rules<Iterator>::header_)
                     >> lit("\r\n");
         }
 
