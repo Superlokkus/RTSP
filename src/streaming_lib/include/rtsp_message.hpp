@@ -20,12 +20,12 @@ BOOST_FUSION_ADAPT_STRUCT(
         (uint_fast16_t, rtsp_version_major)
         (uint_fast16_t, rtsp_version_minor)
         (uint_fast16_t, status_code)
-                (rtsp::string_t, reason_phrase)
+                (rtsp::string, reason_phrase)
                 (rtsp::raw_headers, headers)
 )
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::request,
-        (rtsp::method_t, method_or_extension)
+        (rtsp::method, method_or_extension)
                 (rtsp::request_uri, uri)
                 (uint_fast16_t, rtsp_version_major)
                 (uint_fast16_t, rtsp_version_minor)
@@ -34,8 +34,8 @@ BOOST_FUSION_ADAPT_STRUCT(
 
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::header,
-        (rtsp::string_t, first)
-                (rtsp::string_t, second)
+        (rtsp::string, first)
+                (rtsp::string, second)
 )
 
 namespace rtsp {
@@ -44,10 +44,10 @@ namespace rtsp {
 template<typename Iterator>
 struct common_rules {
 
-    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             ctl{ns::cntrl};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string_t()> quoted_string{
+    boost::spirit::qi::rule<Iterator, rtsp::string()> quoted_string{
             ::boost::spirit::qi::lexeme['"' >> +(ns::char_ - (ctl | '"')) >> '"']};
 
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
@@ -56,13 +56,13 @@ struct common_rules {
     boost::spirit::qi::rule<Iterator, uint_fast16_t()>
             at_least_one_digit{::boost::spirit::qi::uint_parser<uint_fast16_t, 10, 1>()};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             tspecials{ns::char_("()<>@,;:\\\"/[]?={} \t")};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             token{+(ns::char_ - (tspecials | ctl))};
 
-    boost::spirit::qi::rule<Iterator, rtsp::string_t()>
+    boost::spirit::qi::rule<Iterator, rtsp::string()>
             header_field_body_{"header_field_body"};
 
     boost::spirit::qi::rule<Iterator, header()>

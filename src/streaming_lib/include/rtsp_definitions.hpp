@@ -15,16 +15,16 @@
 
 namespace rtsp {
 using char_t = char;
-using string_t = std::basic_string<char_t>;
-using method_t = string_t;
-using request_uri = string_t;
-using header = std::pair<string_t, string_t>;
+using string = std::basic_string<char_t>;
+using method = string;
+using request_uri = string;
+using header = std::pair<string, string>;
 using raw_headers = std::vector<header>;
 
-using headers_t = std::unordered_map<rtsp::header::first_type, rtsp::header::second_type>;
-using body = string_t;
+using headers = std::unordered_map<rtsp::header::first_type, rtsp::header::second_type>;
+using body = string;
 
-const std::unordered_set<method_t> rtsp_methods{
+const std::unordered_set<method> rtsp_methods{
         "DESCRIBE",
         "ANNOUNCE",
         "GET_PARAMETER",
@@ -39,7 +39,7 @@ const std::unordered_set<method_t> rtsp_methods{
 };
 
 struct request {
-    method_t method_or_extension;
+    method method_or_extension;
     request_uri uri;
     uint_fast16_t rtsp_version_major;
     uint_fast16_t rtsp_version_minor;
@@ -49,7 +49,7 @@ struct response {
     uint_fast16_t rtsp_version_major;
     uint_fast16_t rtsp_version_minor;
     uint_fast16_t status_code;
-    string_t reason_phrase;
+    string reason_phrase;
     raw_headers headers;
 };
 using message = boost::variant<request, response>;

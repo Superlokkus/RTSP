@@ -34,7 +34,7 @@ class rtsp_server_state final {
 public:
     explicit rtsp_server_state() :
             methods_{
-                    {method_t{"OPTIONS"}, std::bind(&rtsp_server_state::options, this, std::placeholders::_2)},
+                    {method{"OPTIONS"}, std::bind(&rtsp_server_state::options, this, std::placeholders::_2)},
             } {
     }
 
@@ -71,15 +71,15 @@ public:
         return response;
     }
 
-    using internal_request_t = std::pair<request, headers_t>;
+    using internal_request = std::pair<request, headers>;
     using method_implementation = std::function<
-            std::pair<headers_t, body>(rtsp::rtsp_session &, const internal_request_t &)
+            std::pair<headers, body>(rtsp::rtsp_session &, const internal_request &)
     >;
 
-    std::pair<headers_t, body> options(const internal_request_t &request) const {
-        headers_t headers{};
+    std::pair<headers, body> options(const internal_request &request) const {
+        headers headers{};
 
-        return std::make_pair<headers_t, body>(std::move(headers), "");
+        return std::make_pair(std::move(headers), "");
     }
 
     /*! @brief RFC 2616  4.2 compliant harmonization of headers
@@ -87,14 +87,14 @@ public:
      * @param raw_headers Headers as parsed in
      * @return Harmonized headers
      */
-    static headers_t harmonize_headers(const raw_headers &raw_headers) {
-        headers_t new_headers{};
+    static headers harmonize_headers(const raw_headers &raw_headers) {
+        headers new_headers{};
         for (const auto &header : raw_headers) {
             auto header_slot = new_headers.find(boost::algorithm::to_lower_copy(header.first));
             if (header_slot == new_headers.end()) {
                 new_headers.emplace(header);
             } else {
-                header_slot->second += string_t{","} + header.second;
+                header_slot->second += string{","} + header.second;
             }
         }
         return new_headers;
@@ -104,7 +104,7 @@ private:
     std::mutex sessions_mutex_;
     std::unordered_set<::rtsp::rtsp_session> sessions_;
 
-    std::unordered_map<rtsp::method_t, method_implementation> methods_;
+    std::unordered_map<rtsp::method, method_implementation> methods_;
 
 };
 
