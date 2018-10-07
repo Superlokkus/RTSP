@@ -51,7 +51,7 @@ namespace rtsp {
 
     private:
         fileapi::path ressource_root_;
-        server::rtsp_server_state server_state_;
+        rtsp::server::rtsp_server_state server_state_;
         boost::asio::io_context io_context_;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
         std::vector<std::thread> io_run_threads_;

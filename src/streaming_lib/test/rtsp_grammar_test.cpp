@@ -8,7 +8,7 @@
 #include <vector>
 
 
-BOOST_AUTO_TEST_SUITE(rtsp)
+BOOST_AUTO_TEST_SUITE(rtsp_grammar)
 
     template<typename RTSP_MESSAGE_TYPE>
     struct rtsp_phrases_fixture {

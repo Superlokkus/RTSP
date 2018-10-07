@@ -2,6 +2,9 @@
  * @file rtsp_server_internals.hpp
  */
 
+#ifndef STREAMING_LIB_RTSP_SERVER_INTERNALS_HPP
+#define STREAMING_LIB_RTSP_SERVER_INTERNALS_HPP
+
 #include <unordered_set>
 #include <unordered_map>
 #include <cstdint>
@@ -11,7 +14,6 @@
 #include <tuple>
 
 #include <rtsp_message.hpp>
-#include <rtsp_server_.hpp>
 #include <rtsp_session.hpp>
 #include <rtsp_methods.hpp>
 
@@ -143,3 +145,5 @@ private:
 
 }
 }
+
+#endif //STREAMING_LIB_RTSP_SERVER_INTERNALS_HPP

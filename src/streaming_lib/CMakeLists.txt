@@ -26,8 +26,15 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 if (${TEST_ENABLED})
     enable_testing()
-    add_executable(${PROJECT_NAME}_tests ${CMAKE_CURRENT_SOURCE_DIR}/test/${PROJECT_NAME}_tests.cpp)
-    set_property(TARGET ${PROJECT_NAME}_tests PROPERTY CXX_STANDARD 14)
-    target_link_libraries(${PROJECT_NAME}_tests ${Boost_LIBRARIES} ${PROJECT_NAME})
-    add_test(NAME ${PROJECT_NAME}_tests COMMAND ${PROJECT_NAME}_tests -m HRF -l warning --build_info)
+    set(streaming_lib_test_src
+            ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_grammar_test.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_server_internals_test.cpp
+            )
+    foreach (testSrc ${streaming_lib_test_src})
+        get_filename_component(testName ${testSrc} NAME_WE)
+        add_executable(${PROJECT_NAME}_${testName} ${testSrc})
+        set_property(TARGET ${PROJECT_NAME}_${testName} PROPERTY CXX_STANDARD 14)
+        target_link_libraries(${PROJECT_NAME}_${testName} ${Boost_LIBRARIES} ${PROJECT_NAME})
+        add_test(NAME ${PROJECT_NAME}_${testName} COMMAND ${PROJECT_NAME}_${testName} -m HRF -l warning --build_info)
+    endforeach (testSrc)
 endif ()
