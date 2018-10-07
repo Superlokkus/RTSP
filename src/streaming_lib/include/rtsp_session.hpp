@@ -35,12 +35,12 @@ using session_identifier = boost::uuids::uuid;
 
 namespace std {
 template<>
-struct hash<rtsp::rtsp_session> {
-    typedef rtsp::rtsp_session argument_type;
+struct hash<rtsp::session_identifier> {
+    typedef rtsp::session_identifier argument_type;
     typedef std::size_t result_type;
 
-    result_type operator()(argument_type const &session) const noexcept {
-        return boost::uuids::hash_value(session.session_identifier());
+    result_type operator()(argument_type const &session_identifier) const noexcept {
+        return boost::uuids::hash_value(session_identifier);
     }
 };
 }

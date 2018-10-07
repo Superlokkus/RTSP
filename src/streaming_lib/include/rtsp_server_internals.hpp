@@ -8,6 +8,7 @@
 #include <mutex>
 #include <cctype>
 #include <functional>
+#include <tuple>
 
 #include <rtsp_message.hpp>
 #include <rtsp_server_.hpp>
@@ -15,6 +16,8 @@
 #include <rtsp_methods.hpp>
 
 #include <boost/algorithm/string/case_conv.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 namespace rtsp {
 namespace server {
@@ -52,20 +55,44 @@ public:
         }
         std::cout << std::endl;
 
-        response response{rtsp_major_version, rtsp_minor_version, 500, "Method not called"};
+        response response{rtsp_major_version, rtsp_minor_version, 500, "Internal error: Response unchanged"};
 
-        if (!headers.count("session") &&
-            !(request.method_or_extension == "SETUP" || request.method_or_extension == "OPTIONS")) {
-            response.status_code = 454;
-            response.reason_phrase = "Session not found";
-        }
-
-        if (this->methods_.count(request.method_or_extension)) {
+        if (!headers.count("cseq") || headers.at("cseq").size() == 0) {
+            response.status_code = 400;
+            response.reason_phrase = "Bad Request: CSeq missing";
+        } else if (request.method_or_extension == "OPTIONS") {
+            body body{};
+            std::tie(response, body) = options(std::tie(request, headers));
+        } else if (request.method_or_extension == "SETUP") {
+            rtsp_session new_session{};
+            auto identifier = new_session.session_identifier();
             std::lock_guard<std::mutex> lock{this->sessions_mutex_};
-            /*auto& session = this->sessions_.find()
-            this->methods.at(request.method_or_extension)()*/
+            rtsp_session &inserted_session = this->sessions_.emplace
+                    (std::move(identifier), std::move(new_session)).first->second;
+            this->methods_.at(request.method_or_extension)(inserted_session, std::tie(request, headers));
+        } else if (!headers.count("session")) {
+            response.status_code = 400;
+            response.reason_phrase = "Session header not found";
+        } else if (this->methods_.count(request.method_or_extension)) {
+            session_identifier session_id{};
+            auto converted = boost::conversion::try_lexical_convert<boost::uuids::uuid &, const std::string &>
+                    (headers.at("session"), session_id);
+            if (!converted) {
+                response.status_code = 454;
+                response.reason_phrase = "Session-id malformend";
+            } else {
+                std::lock_guard<std::mutex> lock{this->sessions_mutex_};
+                auto session_it = this->sessions_.find(session_id);
+                if (session_it == this->sessions_.end()) {
+                    response.status_code = 454;
+                    response.reason_phrase = "Session not found";
+                } else {
+                    this->methods_.at(request.method_or_extension)(session_it->second, std::tie(request, headers));
+                }
+            }
         } else {
-
+            response.status_code = 501;
+            response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
         }
 
         return response;
@@ -73,13 +100,13 @@ public:
 
     using internal_request = std::pair<request, headers>;
     using method_implementation = std::function<
-            std::pair<headers, body>(rtsp::rtsp_session &, const internal_request &)
+            std::pair<response, body>(rtsp::rtsp_session &, const internal_request &)
     >;
 
-    std::pair<headers, body> options(const internal_request &request) const {
-        headers headers{};
+    std::pair<response, body> options(const internal_request &request) const {
+        response reponse{};
 
-        return std::make_pair(std::move(headers), "");
+        return std::make_pair(std::move(reponse), "");
     }
 
     /*! @brief RFC 2616  4.2 compliant harmonization of headers
@@ -102,8 +129,7 @@ public:
 
 private:
     std::mutex sessions_mutex_;
-    std::unordered_set<::rtsp::rtsp_session> sessions_;
-
+    std::unordered_map<rtsp::session_identifier, rtsp::rtsp_session> sessions_;
     std::unordered_map<rtsp::method, method_implementation> methods_;
 
 };
