@@ -18,6 +18,7 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <boost/log/trivial.hpp>
 
 namespace rtsp {
 namespace server {
@@ -48,12 +49,12 @@ public:
     response handle_incoming_request(const request &request) {
         const auto headers = harmonize_headers(request.headers);
 
-        //TODO remove this debug output with proper logging
-        std::cout << "Got request " << request.method_or_extension << " " << request.uri << "\n";
+
+        BOOST_LOG_TRIVIAL(info) << request.method_or_extension << " " << request.uri;
         for (const auto &header: headers) {
-            std::cout << header.first << ": " << header.second << "\n";
+            BOOST_LOG_TRIVIAL(info) << header.first << ": " << header.second;
         }
-        std::cout << std::endl;
+        BOOST_LOG_TRIVIAL(info) << "\n";
 
         response response{rtsp_major_version, rtsp_minor_version, 500, "Internal error: Response unchanged"};
 
@@ -94,6 +95,12 @@ public:
             response.status_code = 501;
             response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
         }
+
+        BOOST_LOG_TRIVIAL(info) << response.status_code << " \"" << response.reason_phrase << "\"";
+        for (const auto &header: response.headers) {
+            BOOST_LOG_TRIVIAL(info) << header.first << ": " << header.second;
+        }
+        BOOST_LOG_TRIVIAL(info) << "\n";
 
         return response;
     }

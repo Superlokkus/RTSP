@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
             path = argv[2];
         }
 
-        rtsp::rtsp_server server{path, port_number, [](auto &e) { BOOST_LOG_TRIVIAL(info) << e.what(); }};
+        rtsp::rtsp_server server{path, port_number, [](auto &e) { BOOST_LOG_TRIVIAL(error) << e.what(); }};
 
         BOOST_LOG_TRIVIAL(info) << "Using \"" << path << "\" as ressource path";
         BOOST_LOG_TRIVIAL(info) << "rtsp_server listing on port: " << port_number;
