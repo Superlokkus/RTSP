@@ -250,7 +250,7 @@ void rtsp::rtsp_server::handle_new_incoming_message(std::shared_ptr<std::vector<
                                                     shared_udp_socket &socket_received_from,
                                                     boost::asio::ip::udp::endpoint received_from_endpoint,
                                                     server::rtsp_server_state &server_state) {
-    rtsp_request_grammar<std::string::const_iterator> request_grammar{};
+    rtsp_request_grammar<std::vector<char>::const_iterator> request_grammar{};
     request request{};
 
     auto begin = message->cbegin();
