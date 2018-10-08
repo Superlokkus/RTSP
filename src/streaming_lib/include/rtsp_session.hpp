@@ -22,7 +22,7 @@ using session_identifier = boost::uuids::uuid;
             return uuid_gen();
         }
 
-        session_identifier session_identifier() const noexcept {
+        session_identifier identifier() const noexcept {
             return this->session_identifier_;
         }
 

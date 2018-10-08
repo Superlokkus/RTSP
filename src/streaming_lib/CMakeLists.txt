@@ -6,8 +6,8 @@ set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/include/streaming_lib.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_message.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_message.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_server_.hpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_server_.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_server.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_server.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_session.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_server_internals.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_methods.cpp

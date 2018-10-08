@@ -24,7 +24,7 @@
 namespace rtsp {
     namespace fileapi = boost::filesystem;
 
-    class rtsp_server_ final {
+class rtsp_server final {
     public:
         /*!
          * @param ressource_root Directory which will be the root of the servers rtsp url absolute path
@@ -35,14 +35,14 @@ namespace rtsp {
          * @throws std::runtime_error When @ref ressource_root can not be opend
          * @throws std::exception For errors due to ressource allocation
          */
-        rtsp_server_(fileapi::path ressource_root,
-                     uint16_t port_number = 554,
-                     std::function<void(std::exception &)> error_handler = [](auto) {});
+        rtsp_server(fileapi::path ressource_root,
+                    uint16_t port_number = 554,
+                    std::function<void(std::exception &)> error_handler = [](auto) {});
 
 
         /*! @brief Shutdowns the server as fast as possible
          */
-        ~rtsp_server_();
+        ~rtsp_server();
 
         /*! @brief Initiates a graceful shutdown and blocks until done
          * Graceful means that responses to already received requests will be send, and tcp connections are closed

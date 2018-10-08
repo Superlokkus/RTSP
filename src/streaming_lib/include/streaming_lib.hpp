@@ -11,17 +11,18 @@
 #include <functional>
 
 namespace rtsp {
-    class rtsp_server_;
-    struct rtsp_server final {
-        explicit rtsp_server(std::string video_file_directory, uint16_t port = 554,
+class rtsp_server;
+
+struct rtsp_server_pimpl final {
+    explicit rtsp_server_pimpl(std::string video_file_directory, uint16_t port = 554,
                              std::function<void(std::exception &)> error_handler = [](auto) {});
 
-        ~rtsp_server();
+    ~rtsp_server_pimpl();
 
         void graceful_shutdown();
 
     private:
-        std::unique_ptr<rtsp_server_> rtsp_server_;
+    std::unique_ptr<rtsp_server> rtsp_server_;
     };
 
     struct rtsp_client final {

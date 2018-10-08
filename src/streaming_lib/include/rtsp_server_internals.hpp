@@ -68,7 +68,7 @@ public:
             std::tie(response, body) = options(std::tie(request, headers));
         } else if (request.method_or_extension == "SETUP") {
             rtsp_session new_session{};
-            auto identifier = new_session.session_identifier();
+            auto identifier = new_session.identifier();
             std::lock_guard<std::mutex> lock{this->sessions_mutex_};
             rtsp_session &inserted_session = this->sessions_.emplace
                     (std::move(identifier), std::move(new_session)).first->second;
