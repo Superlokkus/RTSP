@@ -127,9 +127,10 @@ public:
     static headers harmonize_headers(const raw_headers &raw_headers) {
         headers new_headers{};
         for (const auto &header : raw_headers) {
-            auto header_slot = new_headers.find(boost::algorithm::to_lower_copy(header.first));
+            auto harmonized_key = boost::algorithm::to_lower_copy(header.first);
+            auto header_slot = new_headers.find(harmonized_key);
             if (header_slot == new_headers.end()) {
-                new_headers.emplace(header);
+                new_headers.emplace(harmonized_key, header.second);
             } else {
                 header_slot->second += string{","} + header.second;
             }
