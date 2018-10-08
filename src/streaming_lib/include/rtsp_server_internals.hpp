@@ -114,9 +114,10 @@ public:
     >;
 
     std::pair<response, body> options(const internal_request &request) const {
-        response reponse{};
+        response response{rtsp_major_version, rtsp_minor_version, 200, "OK", {{"CSeq", request.second.at("cseq")}}};
 
-        return std::make_pair(std::move(reponse), "");
+        response.headers.emplace_back("Public", "SETUP, TEARDOWN, PLAY, PAUSE");
+        return std::make_pair(std::move(response), "");
     }
 
     /*! @brief RFC 2616  4.2 compliant harmonization of headers

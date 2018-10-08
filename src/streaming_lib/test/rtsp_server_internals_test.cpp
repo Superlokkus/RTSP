@@ -4,6 +4,8 @@
 
 #include <rtsp_server_internals.hpp>
 
+#include <algorithm>
+
 BOOST_AUTO_TEST_SUITE(rtsp_server_internals)
 
 BOOST_AUTO_TEST_CASE(harmonize_headers_test) {
@@ -44,11 +46,16 @@ struct rtsp_server_internals_fixture {
 BOOST_FIXTURE_TEST_SUITE(rtsp_server_internals_fixture_suite, rtsp_server_internals_fixture)
 
 BOOST_AUTO_TEST_CASE(valid_options_request_test) {
-    const rtsp::response correct_response{1, 0, 200, "OK", {{"cseq", "0"}}};
+    const rtsp::response correct_response{1, 0, 200, "OK"};
 
     const auto generated_response = fresh_server_state.handle_incoming_request(valid_options_request);
     BOOST_CHECK_EQUAL(generated_response.status_code, correct_response.status_code);
-    BOOST_TEST(generated_response.headers == correct_response.headers);
+    auto cseq_it = std::find_if(generated_response.headers.cbegin(), generated_response.headers.cend(),
+                                [](const auto &value) {
+                                    return value.first == "CSeq";
+                                });
+    BOOST_REQUIRE(cseq_it != generated_response.headers.cend());
+    BOOST_CHECK_EQUAL(cseq_it->second, "0");
 }
 
 BOOST_AUTO_TEST_CASE(invalid_options_request_test) {
