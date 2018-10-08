@@ -65,14 +65,14 @@ public:
             response.reason_phrase = "Bad Request: CSeq missing";
         } else if (request.method_or_extension == "OPTIONS") {
             body body{};
-            std::tie(response, body) = options(std::tie(request, headers));
+            std::tie(response, body) = options(std::make_pair(request, headers));
         } else if (request.method_or_extension == "SETUP") {
             rtsp_session new_session{};
             auto identifier = new_session.identifier();
             std::lock_guard<std::mutex> lock{this->sessions_mutex_};
             rtsp_session &inserted_session = this->sessions_.emplace
                     (std::move(identifier), std::move(new_session)).first->second;
-            this->methods_.at(request.method_or_extension)(inserted_session, std::tie(request, headers));
+            this->methods_.at(request.method_or_extension)(inserted_session, std::make_pair(request, headers));
         } else if (!headers.count("session")) {
             response.status_code = 400;
             response.reason_phrase = "Session header not found";
@@ -90,7 +90,8 @@ public:
                     response.status_code = 454;
                     response.reason_phrase = "Session not found";
                 } else {
-                    this->methods_.at(request.method_or_extension)(session_it->second, std::tie(request, headers));
+                    this->methods_.at(request.method_or_extension)(session_it->second,
+                                                                   std::make_pair(request, headers));
                 }
             }
         } else {
