@@ -80,7 +80,7 @@ public:
             session_identifier session_id{};
             auto converted = boost::conversion::try_lexical_convert<boost::uuids::uuid &, const std::string &>
                     (headers.at("session"), session_id);
-            if (!converted) {
+            if (!converted || session_id.is_nil()) {
                 response.status_code = 454;
                 response.reason_phrase = "Session-id malformend";
             } else {

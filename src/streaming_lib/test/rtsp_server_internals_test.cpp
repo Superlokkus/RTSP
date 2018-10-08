@@ -21,12 +21,24 @@ BOOST_AUTO_TEST_CASE(harmonize_headers_test) {
 }
 
 struct rtsp_server_internals_fixture {
+    rtsp_server_internals_fixture() {
+        /*auto first_session = some_sessions_server_state.handle_incoming_request(
+                {"SETUP", "rtsp://foo.com/bar.file",1,0, {{"CSeq", "0"}}});*/
+    }
 
-    rtsp::server::rtsp_server_state server_state;
-    rtsp::request valid_options_request{"OPTIONS", "*", 1, 0, {{"cseq", "0"}}};
+    rtsp::server::rtsp_server_state fresh_server_state;
+
+    rtsp::server::rtsp_server_state some_sessions_server_state;
+    /*!
+     * Session, next CSeq, last Method
+     */
+    std::vector<std::tuple<char, unsigned, char>> sessions_to_some_sessions_server_state;
+
+
+    rtsp::request valid_options_request{"OPTIONS", "*", 1, 0, {{"CSeq", "0"}}};
     rtsp::request invalid_options_request{"OPTIONS", "*", 1, 0, {}};
 
-    rtsp::request invalid_method{"dskfjksjdfIIUER", "*", 1, 0, {}};
+
 
 };
 BOOST_FIXTURE_TEST_SUITE(rtsp_server_internals_fixture_suite, rtsp_server_internals_fixture)
@@ -34,7 +46,7 @@ BOOST_FIXTURE_TEST_SUITE(rtsp_server_internals_fixture_suite, rtsp_server_intern
 BOOST_AUTO_TEST_CASE(valid_options_request_test) {
     const rtsp::response correct_response{1, 0, 200, "OK", {{"cseq", "0"}}};
 
-    const auto generated_response = server_state.handle_incoming_request(valid_options_request);
+    const auto generated_response = fresh_server_state.handle_incoming_request(valid_options_request);
     BOOST_CHECK_EQUAL(generated_response.status_code, correct_response.status_code);
     BOOST_TEST(generated_response.headers == correct_response.headers);
 }
@@ -42,17 +54,11 @@ BOOST_AUTO_TEST_CASE(valid_options_request_test) {
 BOOST_AUTO_TEST_CASE(invalid_options_request_test) {
     const rtsp::response correct_response{1, 0, 400, "Bad Request", {}};
 
-    const auto generated_response = server_state.handle_incoming_request(invalid_options_request);
+    const auto generated_response = fresh_server_state.handle_incoming_request(invalid_options_request);
     BOOST_CHECK_EQUAL(generated_response.status_code, correct_response.status_code);
 }
 
-BOOST_AUTO_TEST_CASE(invalid_method_test) {
-    const rtsp::response correct_response{1, 0, 501, "Not Implemented", {{"cseq", "0"}}};
 
-    const auto generated_response = server_state.handle_incoming_request(invalid_method);
-    BOOST_CHECK_EQUAL(generated_response.status_code, correct_response.status_code);
-    BOOST_TEST(generated_response.headers == correct_response.headers);
-}
 
 BOOST_AUTO_TEST_SUITE_END()
 
