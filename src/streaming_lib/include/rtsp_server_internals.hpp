@@ -40,7 +40,9 @@ class rtsp_server_state final {
 public:
     explicit rtsp_server_state() :
             methods_{
-                    {method{"OPTIONS"}, std::bind(&rtsp_server_state::options, this, std::placeholders::_2)},
+                    {method{"OPTIONS"},  std::bind(&rtsp_server_state::options, this, std::placeholders::_2)},
+                    {method{"SETUP"},    &methods::setup},
+                    {method{"TEARDOWN"}, &methods::teardown},
             } {
     }
 
@@ -72,7 +74,8 @@ public:
             std::lock_guard<std::mutex> lock{this->sessions_mutex_};
             rtsp_session &inserted_session = this->sessions_.emplace
                     (std::move(identifier), std::move(new_session)).first->second;
-            this->methods_.at(request.method_or_extension)(inserted_session, std::make_pair(request, headers));
+            response = this->methods_.at(request.method_or_extension)
+                    (inserted_session, std::make_pair(request, headers)).first;
         } else if (!headers.count("session")) {
             response.status_code = 400;
             response.reason_phrase = "Session header not found";
@@ -90,11 +93,14 @@ public:
                     response.status_code = 454;
                     response.reason_phrase = "Session not found";
                 } else {
-                    this->methods_.at(request.method_or_extension)(session_it->second,
-                                                                   std::make_pair(request, headers));
+                    response = this->methods_.at(request.method_or_extension)(session_it->second,
+                                                                              std::make_pair(request, headers)).first;
+                    if (request.method_or_extension == "TEARDOWN") {
+                        this->sessions_.erase(session_it);
+                    }
                 }
             }
-        } else {
+        } else if (!this->methods_.count(request.method_or_extension)) {
             response.status_code = 501;
             response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
         }
@@ -108,7 +114,9 @@ public:
         return response;
     }
 
-    using internal_request = std::pair<request, headers>;
+    /*! @brief The duty of generating session ids and destroying them is done by @ref rtsp_server_state
+     *
+     */
     using method_implementation = std::function<
             std::pair<response, body>(rtsp::rtsp_session &, const internal_request &)
     >;

@@ -45,6 +45,9 @@ struct request {
     uint_fast16_t rtsp_version_minor;
     raw_headers headers;
 };
+
+using internal_request = std::pair<request, headers>;
+
 struct response {
     uint_fast16_t rtsp_version_major;
     uint_fast16_t rtsp_version_minor;

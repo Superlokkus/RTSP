@@ -11,15 +11,20 @@
 namespace rtsp {
 namespace methods {
 
-std::pair<response, body> setup(rtsp::rtsp_session &, const rtsp::request &);
+const uint_fast16_t common_rtsp_major_version = 1;
+const uint_fast16_t common_rtsp_minor_version = 0;
 
-std::pair<response, body> play(rtsp::rtsp_session &, const rtsp::request &);
+response common_response_sekeleton(const rtsp::rtsp_session &, const rtsp::internal_request &);
 
-std::pair<response, body> teardown(rtsp::rtsp_session &, const rtsp::request &);
+std::pair<response, body> setup(rtsp::rtsp_session &, const rtsp::internal_request &);
 
-std::pair<response, body> describe(rtsp::rtsp_session &, const rtsp::request &);
+std::pair<response, body> play(rtsp::rtsp_session &, const rtsp::internal_request &);
 
-std::pair<response, body> pause(rtsp::rtsp_session &, const rtsp::request &);
+std::pair<response, body> teardown(rtsp::rtsp_session &, const rtsp::internal_request &);
+
+std::pair<response, body> describe(rtsp::rtsp_session &, const rtsp::internal_request &);
+
+std::pair<response, body> pause(rtsp::rtsp_session &, const rtsp::internal_request &);
 
 }
 }
