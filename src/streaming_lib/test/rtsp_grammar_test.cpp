@@ -237,5 +237,34 @@ BOOST_AUTO_TEST_SUITE(rtsp_grammar)
 
     BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(rtsp_message)
+
+struct rtsp_message_fixture : rtsp_phrases_fixture<rtsp_message_fixture> {
+    rtsp::message message{};
+
+    void parse_phrase(const std::string &phrase) {
+        rtsp::rtsp_message_grammar<std::string::const_iterator> message_grammar{};
+        begin = phrase.cbegin();
+        end = phrase.cend();
+        success = boost::spirit::qi::phrase_parse(begin, end, message_grammar,
+                                                  boost::spirit::ascii::space, message);
+    }
+};
+BOOST_FIXTURE_TEST_SUITE(rtsp_message_fs, rtsp_message_fixture)
+
+BOOST_AUTO_TEST_CASE(response_message_test) {
+    parse_phrase(ok_response_with_header);
+    BOOST_CHECK(success);
+    BOOST_CHECK(begin == end);
+}
+
+BOOST_AUTO_TEST_CASE(request_message_test) {
+    parse_phrase(pause_request);
+    BOOST_CHECK(success);
+    BOOST_CHECK(begin == end);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE_END()
 

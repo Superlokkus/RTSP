@@ -138,6 +138,20 @@ struct common_rules {
 
     };
 
+template<typename Iterator>
+struct rtsp_message_grammar
+        : ::boost::spirit::qi::grammar<Iterator, message()>,
+          common_rules<Iterator> {
+    rtsp_message_grammar() : rtsp_message_grammar::base_type(start) {
+
+
+        start %= rtsp_request_grammar<Iterator>{} | rtsp_response_grammar<Iterator>{};
+    }
+
+    boost::spirit::qi::rule<Iterator, message()> start;
+
+};
+
     template<typename OutputIterator>
     boost::spirit::karma::rule<OutputIterator, rtsp::header> header_generator{
             boost::spirit::karma::string << ":" << " " << boost::spirit::karma::string
