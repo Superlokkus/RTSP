@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(TEST_ENABLED TRUE CACHE BOOL "Tests are enabled")
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
-find_package(Boost COMPONENTS log REQUIRED)
+find_package(Boost COMPONENTS log system thread REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 add_subdirectory(src/streaming_lib)
