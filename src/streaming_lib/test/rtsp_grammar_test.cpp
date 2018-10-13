@@ -252,16 +252,31 @@ struct rtsp_message_fixture : rtsp_phrases_fixture<rtsp_message_fixture> {
 };
 BOOST_FIXTURE_TEST_SUITE(rtsp_message_fs, rtsp_message_fixture)
 
-BOOST_AUTO_TEST_CASE(response_message_test) {
+BOOST_AUTO_TEST_CASE(ok_response_with_header_message_test) {
     parse_phrase(ok_response_with_header);
     BOOST_CHECK(success);
     BOOST_CHECK(begin == end);
+    BOOST_REQUIRE(message.type() == boost::typeindex::type_id<rtsp::response>().type_info());
+    const auto &response = boost::get<rtsp::response>(message);
+    BOOST_CHECK_EQUAL(response.rtsp_version_major, 1);
+    BOOST_CHECK_EQUAL(response.rtsp_version_minor, 0);
+    BOOST_CHECK_EQUAL(response.status_code, 200);
+    BOOST_CHECK_EQUAL(response.reason_phrase, "OK");
+    BOOST_CHECK_EQUAL(response.headers.size(), 2);
 }
 
-BOOST_AUTO_TEST_CASE(request_message_test) {
+BOOST_AUTO_TEST_CASE(pause_request_message_test) {
     parse_phrase(pause_request);
     BOOST_CHECK(success);
     BOOST_CHECK(begin == end);
+    BOOST_REQUIRE(message.type() == boost::typeindex::type_id<rtsp::request>().type_info());
+    const auto &request = boost::get<rtsp::request>(message);
+    BOOST_CHECK_EQUAL(request.rtsp_version_major, 1);
+    BOOST_CHECK_EQUAL(request.rtsp_version_minor, 0);
+    BOOST_CHECK_EQUAL(request.method_or_extension, "PAUSE");
+    BOOST_CHECK_EQUAL(request.uri, "rtsp://audio.example.com/twister/audio.en/lofi");
+    BOOST_CHECK_EQUAL(request.headers.size(), 3);
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

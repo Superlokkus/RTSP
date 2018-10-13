@@ -145,11 +145,12 @@ struct rtsp_message_grammar
     rtsp_message_grammar() : rtsp_message_grammar::base_type(start) {
 
 
-        start %= rtsp_request_grammar<Iterator>{} | rtsp_response_grammar<Iterator>{};
+        start %= request | response;
     }
 
     boost::spirit::qi::rule<Iterator, message()> start;
-
+    rtsp_request_grammar<Iterator> request;
+    rtsp_response_grammar<Iterator> response;
 };
 
     template<typename OutputIterator>
