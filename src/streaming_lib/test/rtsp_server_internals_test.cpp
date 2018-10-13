@@ -14,11 +14,11 @@ BOOST_AUTO_TEST_CASE(harmonize_headers_test) {
             {{"SomeComplexField"}, {"42"}},
             {{"SomeComplexField"}, {"76"}},
     };
-    const rtsp::headers harmonized_headers{
+    const rtsp::normalized_headers harmonized_headers{
             {{"cseq"},             {"5"}},
             {{"somecomplexfield"}, {"42,76"}},
     };
-    const auto shoud_be_harmonized_headers = rtsp::server::rtsp_server_state::harmonize_headers(raw_headers);
+    const auto shoud_be_harmonized_headers = rtsp::headers::normalize_headers(raw_headers);
     BOOST_TEST(shoud_be_harmonized_headers == harmonized_headers);
 }
 

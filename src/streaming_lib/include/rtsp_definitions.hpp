@@ -21,7 +21,7 @@ using request_uri = string;
 using header = std::pair<string, string>;
 using raw_headers = std::vector<header>;
 
-using headers = std::unordered_map<rtsp::header::first_type, rtsp::header::second_type>;
+using normalized_headers = std::unordered_map<rtsp::header::first_type, rtsp::header::second_type>;
 using body = string;
 
 const std::unordered_set<method> rtsp_methods{
@@ -46,7 +46,7 @@ struct request {
     raw_headers headers;
 };
 
-using internal_request = std::pair<request, headers>;
+using internal_request = std::pair<request, normalized_headers>;
 
 struct response {
     uint_fast16_t rtsp_version_major;

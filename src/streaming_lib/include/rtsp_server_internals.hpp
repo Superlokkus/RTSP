@@ -16,8 +16,8 @@
 #include <rtsp_message.hpp>
 #include <rtsp_session.hpp>
 #include <rtsp_methods.hpp>
+#include <rtsp_headers.hpp>
 
-#include <boost/algorithm/string/case_conv.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/log/trivial.hpp>
@@ -51,7 +51,7 @@ public:
 
 
     response handle_incoming_request(const request &request) {
-        const auto headers = harmonize_headers(request.headers);
+        const auto headers = rtsp::headers::normalize_headers(request.headers);
 
 
         BOOST_LOG_TRIVIAL(info) << request.method_or_extension << " " << request.uri;
@@ -126,25 +126,6 @@ public:
 
         response.headers.emplace_back("Public", "SETUP, TEARDOWN, PLAY, PAUSE");
         return std::make_pair(std::move(response), "");
-    }
-
-    /*! @brief RFC 2616  4.2 compliant harmonization of headers
-     *
-     * @param raw_headers Headers as parsed in
-     * @return Harmonized headers
-     */
-    static headers harmonize_headers(const raw_headers &raw_headers) {
-        headers new_headers{};
-        for (const auto &header : raw_headers) {
-            auto harmonized_key = boost::algorithm::to_lower_copy(header.first);
-            auto header_slot = new_headers.find(harmonized_key);
-            if (header_slot == new_headers.end()) {
-                new_headers.emplace(harmonized_key, header.second);
-            } else {
-                header_slot->second += string{","} + header.second;
-            }
-        }
-        return new_headers;
     }
 
 private:

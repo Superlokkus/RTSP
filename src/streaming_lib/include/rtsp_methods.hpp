@@ -22,8 +22,6 @@ std::pair<response, body> play(rtsp::rtsp_session &, const rtsp::internal_reques
 
 std::pair<response, body> teardown(rtsp::rtsp_session &, const rtsp::internal_request &);
 
-std::pair<response, body> describe(rtsp::rtsp_session &, const rtsp::internal_request &);
-
 std::pair<response, body> pause(rtsp::rtsp_session &, const rtsp::internal_request &);
 
 }
