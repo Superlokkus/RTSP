@@ -10,6 +10,7 @@ set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_server.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_session.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_server_internals.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_server_internals.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_methods.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_methods.hpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_definitions.hpp

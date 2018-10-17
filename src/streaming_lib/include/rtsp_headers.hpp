@@ -8,10 +8,13 @@
 
 #include <vector>
 #include <algorithm>
+#include <cstdint>
+#include <utility>
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/karma.hpp>
 #include <boost/optional.hpp>
+#include <boost/variant.hpp>
 
 
 #include <rtsp_definitions.hpp>
@@ -25,12 +28,15 @@ namespace headers {
  * @return Harmonized headers
  */
 normalized_headers normalize_headers(const raw_headers &raw_headers);
-/*
+
 struct transport{
     struct transport_spec {
-        using ttl = unsigned;
-        using port = unsigned;
-        using parameter = boost::variant<>;
+        using ttl = uint_fast16_t;
+        using port_number = uint_fast32_t;
+        using ssrc = uint32_t;
+        using port_range = std::pair<port_number, port_number>;
+        using port = boost::variant<port_number, port_range>;
+        using parameter = boost::variant<string, ttl>;
         string transport_protocol;
         string profile;
         boost::optional<string> lower_transport;
@@ -39,7 +45,7 @@ struct transport{
 
     std::vector<transport_spec> specifications;
 };
-*/
+
 }
 }
 
