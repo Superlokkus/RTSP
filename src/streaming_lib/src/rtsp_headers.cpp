@@ -16,3 +16,6 @@ rtsp::normalized_headers rtsp::headers::normalize_headers(const rtsp::raw_header
     return new_headers;
 }
 
+template
+struct rtsp::headers::transport_grammar<std::string::const_iterator>;
+

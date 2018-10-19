@@ -15,9 +15,10 @@
 #include <boost/spirit/include/karma.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
-
+#include <boost/spirit/include/qi_as.hpp>
 
 #include <rtsp_definitions.hpp>
+#include <rtsp_message.hpp>
 
 namespace rtsp {
 namespace headers {
@@ -29,7 +30,7 @@ namespace headers {
  */
 normalized_headers normalize_headers(const raw_headers &raw_headers);
 
-struct transport{
+struct transport {
     struct transport_spec {
         using ttl = uint_fast16_t;
         using port_number = uint_fast32_t;
@@ -43,7 +44,71 @@ struct transport{
         std::vector<parameter> parameters;
     };
 
+    transport() = default;
+
+    explicit transport(std::vector<transport_spec> specs) : specifications(std::move(specs)) {}
+
     std::vector<transport_spec> specifications;
+};
+}
+}
+
+BOOST_FUSION_ADAPT_STRUCT(
+        rtsp::headers::transport::transport_spec,
+        (rtsp::string, transport_protocol)
+                (rtsp::string, profile)
+                (boost::optional<rtsp::string>, lower_transport)
+/*(std::vector<rtsp::headers::transport::transport_spec::parameter>, parameters)*/
+)
+
+namespace rtsp {
+namespace headers {
+
+namespace ns = ::rtsp::ns;
+template<typename Iterator>
+struct common_rules : rtsp::common_rules<Iterator> {
+
+    boost::spirit::qi::rule<Iterator, rtsp::string()> transport_protocol_{
+            +rtsp::common_rules<Iterator>::token
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::string()> profile_{
+            +rtsp::common_rules<Iterator>::token
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::string()> lower_transport_{
+            +rtsp::common_rules<Iterator>::token
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec()> transport_spec_{
+            transport_protocol_ >> ::boost::spirit::qi::lit("/")
+                                >> profile_
+                                >> -(::boost::spirit::qi::lit("/") >> lower_transport_)
+    };
+
+
+};
+
+template<typename Iterator>
+struct transport_grammar
+        : ::boost::spirit::qi::grammar<Iterator, rtsp::headers::transport()>,
+          common_rules<Iterator> {
+    transport_grammar() : transport_grammar::base_type(start) {
+
+        using ::boost::spirit::qi::uint_parser;
+        using ::boost::spirit::qi::lexeme;
+        using ::boost::spirit::qi::lit;
+        using boost::spirit::qi::omit;
+        using ::boost::spirit::qi::repeat;
+
+        //qi::as because of https://stackoverflow.com/a/19824426/3537677
+        start %= boost::spirit::qi::as<std::vector<transport::transport_spec>>()[
+                common_rules<Iterator>::transport_spec_ % ","
+        ];
+    }
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport()> start;
+
 };
 
 }

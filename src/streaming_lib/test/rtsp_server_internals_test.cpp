@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE streaming_lib_tests
+#define BOOST_TEST_MODULE rtsp_server_internals_tests
 
 #include <boost/test/included/unit_test.hpp>
 

@@ -32,6 +32,7 @@ if (${TEST_ENABLED})
     set(streaming_lib_test_src
             ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_grammar_test.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_server_internals_test.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_headers_test.cpp
             )
     foreach (testSrc ${streaming_lib_test_src})
         get_filename_component(testName ${testSrc} NAME_WE)
