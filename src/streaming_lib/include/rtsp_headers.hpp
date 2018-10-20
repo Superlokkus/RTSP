@@ -35,9 +35,10 @@ struct transport {
         using ttl = uint_fast16_t;
         using port_number = uint_fast32_t;
         using ssrc = uint32_t;
-        using port_range = std::pair<port_number, port_number>;
+        using port_range = std::tuple<port_number, port_number>;
         using port = boost::variant<port_number, port_range>;
-        using parameter = boost::variant<string, ttl>;
+        using mode = std::vector<method>;
+        using parameter = boost::variant<string, ttl, port, ssrc, mode>;
         string transport_protocol;
         string profile;
         boost::optional<string> lower_transport;
@@ -58,7 +59,7 @@ BOOST_FUSION_ADAPT_STRUCT(
         (rtsp::string, transport_protocol)
                 (rtsp::string, profile)
                 (boost::optional<rtsp::string>, lower_transport)
-/*(std::vector<rtsp::headers::transport::transport_spec::parameter>, parameters)*/
+                (std::vector<rtsp::headers::transport::transport_spec::parameter>, parameters)
 )
 
 namespace rtsp {
@@ -80,10 +81,50 @@ struct common_rules : rtsp::common_rules<Iterator> {
             +rtsp::common_rules<Iterator>::token
     };
 
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::ttl()> ttl_{
+            boost::spirit::qi::lit("ttl=")
+                    >> boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::ttl, 10, 1, 3>()
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::port_range()> port_range_{
+            boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>()
+                    >> boost::spirit::qi::lit("-")
+                    >> boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>()
+
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::port()> port_{
+            boost::spirit::qi::lit("port=") >>
+                                            (port_range_ |
+                                             boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::ssrc()> ssrc_{
+            boost::spirit::qi::lit("ssrc=") >>
+                                            boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 16, 8, 8>()
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::mode()> mode_{
+            boost::spirit::qi::lit("mode=") >> (+rtsp::common_rules<Iterator>::token
+                                                | +rtsp::common_rules<Iterator>::quoted_string)
+    };
+
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::parameter()> parameter_{
+            boost::spirit::qi::lit(";") >> (
+                    ttl_
+                    | port_
+                    | ssrc_
+                    | mode_
+                    | +(rtsp::common_rules<Iterator>::token)
+            )
+    };
+
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec()> transport_spec_{
             transport_protocol_ >> ::boost::spirit::qi::lit("/")
                                 >> profile_
                                 >> -(::boost::spirit::qi::lit("/") >> lower_transport_)
+                                >> *(parameter_)
     };
 
 

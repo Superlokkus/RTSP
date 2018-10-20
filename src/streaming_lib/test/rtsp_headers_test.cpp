@@ -57,11 +57,49 @@ BOOST_AUTO_TEST_CASE(transport_specs_test) {
     parse_phrase(transport_specs);
     BOOST_CHECK(success);
     BOOST_CHECK(begin == end);
+    //std::cout << "WOOT: \"" << std::string{begin,end} << "\"" << std::endl;
     BOOST_REQUIRE_EQUAL(specs.specifications.size(), 2);
     const auto &first_spec = specs.specifications.at(0);
     const auto &second_spec = specs.specifications.at(1);
     BOOST_CHECK_EQUAL(first_spec.transport_protocol, "RTP");
     BOOST_CHECK_EQUAL(second_spec.transport_protocol, "RTP");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+struct transport_spec_phrases_fixture {
+    std::string spec_multi_ttl_play{"RTP/AVP;multicast;ttl=127;mode=\"PLAY\""};
+    std::string spec_uni_client_play{"RTP/AVP;unicast;client_port=3456-3457;mode=\"PLAY\""};
+
+    std::string::const_iterator begin{};
+    std::string::const_iterator end{};
+    bool success{false};
+    rtsp::headers::transport::transport_spec spec{};
+
+    void parse_phrase(const std::string &phrase) {
+        rtsp::headers::common_rules<std::string::const_iterator> rules{};
+        begin = phrase.cbegin();
+        end = phrase.cend();
+        success = boost::spirit::qi::phrase_parse(begin, end, rules.transport_spec_,
+                                                  boost::spirit::ascii::space, spec);
+    }
+};
+
+BOOST_FIXTURE_TEST_SUITE(transport_header_spec_tests, transport_spec_phrases_fixture)
+
+BOOST_AUTO_TEST_CASE(spec_multi_ttl_play_test) {
+    parse_phrase(spec_multi_ttl_play);
+    BOOST_CHECK(success);
+    BOOST_CHECK(begin == end);
+    BOOST_CHECK_EQUAL(spec.transport_protocol, "RTP");
+    BOOST_CHECK_EQUAL(spec.profile, "AVP");
+    BOOST_CHECK(!spec.lower_transport);
+    BOOST_CHECK_EQUAL(spec.parameters.size(), 3);
+    BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::ttl>(spec.parameters.at(1)), 127);
+    BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)).at(0), "PLAY");
+    std::cout << "Whhoo\"" << boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(0)).at(0)
+              << "\"" << std::endl;
+    BOOST_CHECK_EQUAL(boost::get<rtsp::string>(spec.parameters.at(0)), "multicast");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
