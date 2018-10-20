@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(transport_specs_test) {
     parse_phrase(transport_specs);
     BOOST_CHECK(success);
     BOOST_CHECK(begin == end);
-    //std::cout << "WOOT: \"" << std::string{begin,end} << "\"" << std::endl;
+    std::cout << "WOOT: \"" << std::string{begin, end} << "\"" << std::endl;
     BOOST_REQUIRE_EQUAL(specs.specifications.size(), 2);
     const auto &first_spec = specs.specifications.at(0);
     const auto &second_spec = specs.specifications.at(1);
@@ -96,9 +96,7 @@ BOOST_AUTO_TEST_CASE(spec_multi_ttl_play_test) {
     BOOST_CHECK(!spec.lower_transport);
     BOOST_CHECK_EQUAL(spec.parameters.size(), 3);
     BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::ttl>(spec.parameters.at(1)), 127);
-    BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)).at(0), "PLAY");
-    std::cout << "Whhoo\"" << boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(0)).at(0)
-              << "\"" << std::endl;
+    BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)), "PLAY");
     BOOST_CHECK_EQUAL(boost::get<rtsp::string>(spec.parameters.at(0)), "multicast");
 }
 

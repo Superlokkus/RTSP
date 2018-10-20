@@ -37,7 +37,7 @@ struct transport {
         using ssrc = uint32_t;
         using port_range = std::tuple<port_number, port_number>;
         using port = boost::variant<port_number, port_range>;
-        using mode = std::vector<method>;
+        using mode = string;
         using parameter = boost::variant<string, ttl, port, ssrc, mode>;
         string transport_protocol;
         string profile;
@@ -105,8 +105,8 @@ struct common_rules : rtsp::common_rules<Iterator> {
     };
 
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::mode()> mode_{
-            boost::spirit::qi::lit("mode=") >> (+rtsp::common_rules<Iterator>::token
-                                                | +rtsp::common_rules<Iterator>::quoted_string)
+            boost::spirit::qi::lit("mode=") >> (rtsp::common_rules<Iterator>::token
+                                                | rtsp::common_rules<Iterator>::quoted_string)
     };
 
 
@@ -116,7 +116,7 @@ struct common_rules : rtsp::common_rules<Iterator> {
                     | port_
                     | ssrc_
                     | mode_
-                    | +(rtsp::common_rules<Iterator>::token)
+                    | rtsp::common_rules<Iterator>::token
             )
     };
 
