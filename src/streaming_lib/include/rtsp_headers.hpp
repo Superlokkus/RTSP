@@ -35,7 +35,7 @@ struct transport {
         using ttl = uint_fast16_t;
         using port_number = uint_fast32_t;
         using ssrc = uint32_t;
-        using port_range = std::tuple<port_number, port_number>;
+        using port_range = std::pair<port_number, port_number>;
         struct port {
             enum struct port_type {
                 general, server, client
@@ -60,6 +60,12 @@ struct transport {
 };
 }
 }
+
+BOOST_FUSION_ADAPT_STRUCT(
+        rtsp::headers::transport::transport_spec::port_range,
+        (rtsp::headers::transport::transport_spec::port_number, first)
+                (rtsp::headers::transport::transport_spec::port_number, second)
+)
 
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::headers::transport::transport_spec::port,

@@ -7,6 +7,22 @@
 
 BOOST_AUTO_TEST_SUITE(rtsp_headers)
 
+BOOST_AUTO_TEST_CASE(port_range_test) {
+    std::string phrase{"42-1337"};
+    rtsp::headers::common_rules
+            <std::string::const_iterator> rules{};
+    auto begin = phrase.cbegin();
+    auto end = phrase.cend();
+    rtsp::headers::transport::transport_spec::port_range range;
+    bool success = boost::spirit::qi::phrase_parse(begin, end, rules.port_range_,
+                                                   boost::spirit::ascii::space, range);
+    BOOST_CHECK(success);
+    BOOST_CHECK(begin == end);
+    BOOST_CHECK_EQUAL(std::get<0>(range), 42);
+    BOOST_CHECK_EQUAL(std::get<1>(range), 1337);
+}
+
+
 struct transport_phrases_fixture {
     std::string simple_transport_spec{"RTP/AVP/TCP"};
 
