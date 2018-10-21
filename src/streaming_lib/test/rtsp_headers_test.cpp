@@ -107,10 +107,13 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
     BOOST_CHECK_EQUAL(spec.profile, "AVP");
     BOOST_CHECK(!spec.lower_transport);
     BOOST_CHECK_EQUAL(spec.parameters.size(), 3);
-    const auto &client_port = boost::get<rtsp::headers::transport::transport_spec::client_port>(spec.parameters.at(1));
-    const auto client_port_range = boost::get<rtsp::headers::transport::transport_spec::port_range>(client_port);
+    BOOST_CHECK_EQUAL(spec.parameters.at(1).which(), 2);
+    const auto &client_port = boost::get<rtsp::headers::transport::transport_spec::port>(spec.parameters.at(1));
+    const auto client_port_range = boost::get<rtsp::headers::transport::transport_spec::port_range>(
+            client_port.port_numbers);
     const auto should_range = rtsp::headers::transport::transport_spec::port_range{std::forward_as_tuple(3456, 3457)};
     BOOST_CHECK(client_port_range == should_range);
+    BOOST_CHECK(client_port.type == rtsp::headers::transport::transport_spec::port::port_type::client);
     BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)), "PLAY");
     BOOST_CHECK_EQUAL(boost::get<rtsp::string>(spec.parameters.at(0)), "unicast");
 }

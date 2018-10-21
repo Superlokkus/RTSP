@@ -36,11 +36,16 @@ struct transport {
         using port_number = uint_fast32_t;
         using ssrc = uint32_t;
         using port_range = std::tuple<port_number, port_number>;
-        using port = boost::variant<port_number, port_range>;
-        using client_port = port;
-        using server_port = port;
+        struct port {
+            enum struct port_type {
+                general, server, client
+            };
+            using port_number_type = boost::variant<port_number, port_range>;
+            port_type type;
+            port_number_type port_numbers;
+        };
         using mode = string;
-        using parameter = boost::variant<string, ttl, port, ssrc, mode, client_port, server_port>;
+        using parameter = boost::variant<string, ttl, port, ssrc, mode>;
         string transport_protocol;
         string profile;
         boost::optional<string> lower_transport;
@@ -55,6 +60,12 @@ struct transport {
 };
 }
 }
+
+BOOST_FUSION_ADAPT_STRUCT(
+        rtsp::headers::transport::transport_spec::port,
+        (rtsp::headers::transport::transport_spec::port::port_type, type)
+                (rtsp::headers::transport::transport_spec::port::port_number_type, port_numbers)
+)
 
 BOOST_FUSION_ADAPT_STRUCT(
         rtsp::headers::transport::transport_spec,
@@ -88,6 +99,15 @@ struct common_rules : rtsp::common_rules<Iterator> {
                     >> boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::ttl, 10, 1, 3>()
     };
 
+    struct port_type_rule
+            : boost::spirit::qi::symbols<rtsp::char_t, rtsp::headers::transport::transport_spec::port::port_type> {
+        port_type_rule() {
+            this->add("port", rtsp::headers::transport::transport_spec::port::port_type::general)
+                    ("server_port", rtsp::headers::transport::transport_spec::port::port_type::server)
+                    ("client_port", rtsp::headers::transport::transport_spec::port::port_type::client);
+        }
+    } port_type_;
+
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::port_range()> port_range_{
             boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>()
                     >> boost::spirit::qi::lit("-")
@@ -96,21 +116,9 @@ struct common_rules : rtsp::common_rules<Iterator> {
     };
 
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::port()> port_{
-            boost::spirit::qi::lit("port=") >>
-                                            (port_range_ |
-                                             boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
-    };
-
-    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::server_port()> server_port_{
-            boost::spirit::qi::lit("server_port=") >>
-                                                   (port_range_ |
-                                                    boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
-    };
-
-    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::client_port()> client_port_{
-            boost::spirit::qi::lit("client_port=") >>
-                                                   (port_range_ |
-                                                    boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
+            port_type_ >> boost::spirit::qi::lit("=") >>
+                       (port_range_ |
+                        boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
     };
 
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::ssrc()> ssrc_{
@@ -127,8 +135,6 @@ struct common_rules : rtsp::common_rules<Iterator> {
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::parameter()> parameter_{
             boost::spirit::qi::lit(";") >> (
                     ttl_
-                    | server_port_
-                    | client_port_
                     | port_
                     | ssrc_
                     | mode_
