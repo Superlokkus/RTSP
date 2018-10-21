@@ -37,8 +37,10 @@ struct transport {
         using ssrc = uint32_t;
         using port_range = std::tuple<port_number, port_number>;
         using port = boost::variant<port_number, port_range>;
+        using client_port = port;
+        using server_port = port;
         using mode = string;
-        using parameter = boost::variant<string, ttl, port, ssrc, mode>;
+        using parameter = boost::variant<string, ttl, port, ssrc, mode, client_port, server_port>;
         string transport_protocol;
         string profile;
         boost::optional<string> lower_transport;
@@ -99,6 +101,18 @@ struct common_rules : rtsp::common_rules<Iterator> {
                                              boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
     };
 
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::server_port()> server_port_{
+            boost::spirit::qi::lit("server_port=") >>
+                                                   (port_range_ |
+                                                    boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
+    };
+
+    boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::client_port()> client_port_{
+            boost::spirit::qi::lit("client_port=") >>
+                                                   (port_range_ |
+                                                    boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 10, 1, 5>())
+    };
+
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::ssrc()> ssrc_{
             boost::spirit::qi::lit("ssrc=") >>
                                             boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 16, 8, 8>()
@@ -113,6 +127,8 @@ struct common_rules : rtsp::common_rules<Iterator> {
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::parameter()> parameter_{
             boost::spirit::qi::lit(";") >> (
                     ttl_
+                    | server_port_
+                    | client_port_
                     | port_
                     | ssrc_
                     | mode_

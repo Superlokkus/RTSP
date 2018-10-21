@@ -57,7 +57,6 @@ BOOST_AUTO_TEST_CASE(transport_specs_test) {
     parse_phrase(transport_specs);
     BOOST_CHECK(success);
     BOOST_CHECK(begin == end);
-    std::cout << "WOOT: \"" << std::string{begin, end} << "\"" << std::endl;
     BOOST_REQUIRE_EQUAL(specs.specifications.size(), 2);
     const auto &first_spec = specs.specifications.at(0);
     const auto &second_spec = specs.specifications.at(1);
@@ -98,6 +97,22 @@ BOOST_AUTO_TEST_CASE(spec_multi_ttl_play_test) {
     BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::ttl>(spec.parameters.at(1)), 127);
     BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)), "PLAY");
     BOOST_CHECK_EQUAL(boost::get<rtsp::string>(spec.parameters.at(0)), "multicast");
+}
+
+BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
+    parse_phrase(spec_uni_client_play);
+    BOOST_CHECK(success);
+    BOOST_CHECK(begin == end);
+    BOOST_CHECK_EQUAL(spec.transport_protocol, "RTP");
+    BOOST_CHECK_EQUAL(spec.profile, "AVP");
+    BOOST_CHECK(!spec.lower_transport);
+    BOOST_CHECK_EQUAL(spec.parameters.size(), 3);
+    const auto &client_port = boost::get<rtsp::headers::transport::transport_spec::client_port>(spec.parameters.at(1));
+    const auto client_port_range = boost::get<rtsp::headers::transport::transport_spec::port_range>(client_port);
+    const auto should_range = rtsp::headers::transport::transport_spec::port_range{std::forward_as_tuple(3456, 3457)};
+    BOOST_CHECK(client_port_range == should_range);
+    BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)), "PLAY");
+    BOOST_CHECK_EQUAL(boost::get<rtsp::string>(spec.parameters.at(0)), "unicast");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
