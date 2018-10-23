@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
     const auto &client_port = boost::get<rtsp::headers::transport::transport_spec::port>(spec.parameters.at(1));
     const auto client_port_range = boost::get<rtsp::headers::transport::transport_spec::port_range>(
             client_port.port_numbers);
-    const auto should_range = rtsp::headers::transport::transport_spec::port_range{std::forward_as_tuple(3456, 3457)};
+    const auto should_range = rtsp::headers::transport::transport_spec::port_range{std::make_pair(3456, 3457)};
     BOOST_CHECK(client_port_range == should_range);
     BOOST_CHECK(client_port.type == rtsp::headers::transport::transport_spec::port::port_type::client);
     BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)), "PLAY");
@@ -135,5 +135,14 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_CASE(transport_gen) {
+    rtsp::headers::transport::transport_spec spec1{"RTP", "AVP", boost::make_optional<rtsp::string>("UDP")};
+    rtsp::headers::transport::transport_spec spec2{"RTP", "AVP", boost::none};
+    rtsp::headers::transport transport{{spec1, spec2}};
+    std::string output;
+    rtsp::headers::generate_transport_header(std::back_inserter(output), transport);
+    BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP,RTP/AVP");
+}
 
 BOOST_AUTO_TEST_SUITE_END()

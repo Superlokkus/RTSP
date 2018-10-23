@@ -19,3 +19,8 @@ rtsp::normalized_headers rtsp::headers::normalize_headers(const rtsp::raw_header
 template
 struct rtsp::headers::transport_grammar<std::string::const_iterator>;
 
+template
+bool rtsp::headers::generate_transport_header<std::back_insert_iterator<std::string>>(
+        std::back_insert_iterator<std::string> sink,
+        const rtsp::headers::transport &transport);
+

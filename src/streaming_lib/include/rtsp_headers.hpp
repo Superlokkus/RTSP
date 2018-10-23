@@ -129,7 +129,7 @@ struct common_rules : rtsp::common_rules<Iterator> {
 
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::ssrc()> ssrc_{
             boost::spirit::qi::lit("ssrc=") >>
-                                            boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::port_number, 16, 8, 8>()
+                                            boost::spirit::qi::uint_parser<rtsp::headers::transport::transport_spec::ssrc, 16, 8, 8>()
     };
 
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport::transport_spec::mode()> mode_{
@@ -179,6 +179,84 @@ struct transport_grammar
     boost::spirit::qi::rule<Iterator, rtsp::headers::transport()> start;
 
 };
+
+template<typename OutputIterator>
+struct transport_generators {
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::ttl>
+            ttl_gen{
+            boost::spirit::karma::lit("ttl=") <<
+                                              boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::ttl, 10>()
+    };
+
+    struct port_type_gen :
+            boost::spirit::karma::symbols<rtsp::headers::transport::transport_spec::port::port_type, rtsp::string> {
+        port_type_gen() {
+            this->add(rtsp::headers::transport::transport_spec::port::port_type::general, "port")
+                    (rtsp::headers::transport::transport_spec::port::port_type::server, "server_port")
+                    (rtsp::headers::transport::transport_spec::port::port_type::client, "client_port");
+        }
+    } port_type_gen_;
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::port_range>
+            port_range_gen{
+            boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::port_number, 10>() <<
+                                                                                                              boost::spirit::karma::lit(
+                                                                                                                      "-")
+                                                                                                              <<
+                                                                                                              boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::port_number, 10>()
+    };
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::port>
+            port_gen{
+            port_type_gen_ << boost::spirit::karma::lit("=") << (
+                    port_range_gen
+                    |
+                    boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::port_number, 10>()
+            )
+    };
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::ssrc>
+            ssrc_gen{
+            boost::spirit::karma::lit("ssrc=") <<
+                                               boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::ssrc, 10>()
+    };
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::mode>
+            mode_gen{
+            boost::spirit::karma::lit("mode=\"") <<
+                                                 boost::spirit::karma::string
+                                                 << boost::spirit::karma::lit("\"")
+    };
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::parameter>
+            parameter_gen{
+            boost::spirit::karma::lit(";") <<
+                                           ttl_gen
+            | port_gen
+            | ssrc_gen
+            | mode_gen
+            | boost::spirit::karma::string
+    };
+
+    boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec> transport_spec{
+            boost::spirit::karma::string << boost::spirit::karma::lit("/")
+                                         << boost::spirit::karma::string << boost::spirit::karma::lit("/")
+                                         << -(boost::spirit::karma::lit("/") << boost::spirit::karma::string)
+                                         << *(parameter_gen)
+    };
+};
+
+
+template<typename OutputIterator>
+bool generate_transport_header(OutputIterator sink, const rtsp::headers::transport &transport) {
+    using ::boost::spirit::karma::lit;
+    using ::boost::spirit::karma::uint_;
+    using ::boost::spirit::karma::string;
+    transport_generators<OutputIterator> gens{};
+
+    return boost::spirit::karma::generate(sink, gens.transport_spec % ',', transport);
+}
 
 }
 }
