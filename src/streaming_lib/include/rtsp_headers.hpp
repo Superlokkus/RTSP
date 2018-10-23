@@ -252,7 +252,6 @@ namespace spirit {
 namespace traits {
 template<>
 struct transform_attribute<rtsp::headers::transport const, std::vector<rtsp::headers::transport::transport_spec>, karma::domain> {
-    typedef int type;
 
     static std::vector<rtsp::headers::transport::transport_spec>
     pre(rtsp::headers::transport const &d) { return d.specifications; }
