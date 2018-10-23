@@ -141,7 +141,9 @@ BOOST_AUTO_TEST_CASE(transport_gen) {
     rtsp::headers::transport::transport_spec spec2{"RTP", "AVP", boost::none};
     rtsp::headers::transport transport{{spec1, spec2}};
     std::string output;
-    rtsp::headers::generate_transport_header(std::back_inserter(output), transport);
+    rtsp::headers::generate_transport_header_grammar<std::back_insert_iterator<std::string>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, transport);
+    BOOST_CHECK(success);
     BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP,RTP/AVP");
 }
 
