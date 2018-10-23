@@ -230,16 +230,16 @@ struct transport_generators {
     boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::parameter()>
             parameter_gen{
             boost::spirit::karma::lit(";") <<
-                                           ttl_gen
-            | port_gen
-            | ssrc_gen
-            | mode_gen
-            | boost::spirit::karma::string
+                                           (ttl_gen
+                                            | port_gen
+                                            | ssrc_gen
+                                            | mode_gen
+                                            | boost::spirit::karma::string)
     };
 
     boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec()> transport_spec{
             boost::spirit::karma::string << boost::spirit::karma::lit("/")
-                                         << boost::spirit::karma::string << boost::spirit::karma::lit("/")
+                                         << boost::spirit::karma::string
                                          << -(boost::spirit::karma::lit("/") << boost::spirit::karma::string)
                                          << *(parameter_gen)
     };

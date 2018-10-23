@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_CASE(transport_gen) {
+BOOST_AUTO_TEST_CASE(transport_gen_test) {
     rtsp::headers::transport::transport_spec spec1{"RTP", "AVP", boost::make_optional<rtsp::string>("UDP")};
     rtsp::headers::transport::transport_spec spec2{"RTP", "AVP", boost::none};
     rtsp::headers::transport transport{{spec1, spec2}};
@@ -145,6 +145,25 @@ BOOST_AUTO_TEST_CASE(transport_gen) {
     const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, transport);
     BOOST_CHECK(success);
     BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP,RTP/AVP");
+}
+
+BOOST_AUTO_TEST_CASE(transport_spec_gen_test) {
+    rtsp::headers::transport::transport_spec spec1{"RTP", "AVP", boost::make_optional<rtsp::string>("UDP"), {
+            rtsp::headers::transport::transport_spec::port{
+                    rtsp::headers::transport::transport_spec::port::port_type::general,
+                    {42}},
+            rtsp::headers::transport::transport_spec::port{
+                    rtsp::headers::transport::transport_spec::port::port_type::client,
+                    rtsp::headers::transport::transport_spec::port_range{5, 1337}},
+            rtsp::headers::transport::transport_spec::mode{"PLAY"}
+    }};
+    rtsp::headers::transport::transport_spec spec2{"RTP", "AVP", boost::none};
+    rtsp::headers::transport transport{{spec1, spec2}};
+    std::string output;
+    rtsp::headers::generate_transport_header_grammar<std::back_insert_iterator<std::string>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, transport);
+    BOOST_CHECK(success);
+    BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP;port=42;client_port=5-1337;mode=\"PLAY\",RTP/AVP");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
