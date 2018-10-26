@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
     BOOST_CHECK_EQUAL(spec.profile, "AVP");
     BOOST_CHECK(!spec.lower_transport);
     BOOST_CHECK_EQUAL(spec.parameters.size(), 3);
-    BOOST_CHECK_EQUAL(spec.parameters.at(1).which(), 2);
+    BOOST_CHECK_EQUAL(spec.parameters.at(1).which(), 1);
     const auto &client_port = boost::get<rtsp::headers::transport::transport_spec::port>(spec.parameters.at(1));
     const auto client_port_range = boost::get<rtsp::headers::transport::transport_spec::port_range>(
             client_port.port_numbers);
@@ -145,6 +145,25 @@ BOOST_AUTO_TEST_CASE(transport_gen_test) {
     const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, transport);
     BOOST_CHECK(success);
     BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP,RTP/AVP");
+}
+
+BOOST_AUTO_TEST_CASE(mode_gen_test) {
+    auto mode = rtsp::headers::transport::transport_spec::mode{"PLAY"};
+    std::string output;
+    rtsp::headers::transport_generators<std::back_insert_iterator<std::string>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar.mode_gen, mode);
+    BOOST_CHECK(success);
+    BOOST_CHECK_EQUAL(output, "mode=\"PLAY\"");
+}
+
+BOOST_AUTO_TEST_CASE(mode_varaint_gen_test) {
+    rtsp::headers::transport::transport_spec::parameter mode{rtsp::headers::transport::transport_spec::mode{"PLAY"}};
+    std::string output;
+    rtsp::headers::transport_generators<std::back_insert_iterator<std::string>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output),
+                                                        gen_grammar.parameter_gen, mode);
+    BOOST_CHECK(success);
+    BOOST_CHECK_EQUAL(output, ";mode=\"PLAY\"");
 }
 
 BOOST_AUTO_TEST_CASE(transport_spec_gen_test) {

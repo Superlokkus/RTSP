@@ -43,8 +43,10 @@ struct transport {
             port_type type;
             port_number_type port_numbers;
         };
-        using mode = string;
-        using parameter = boost::variant<string, ttl, port, ssrc, mode>;
+        struct mode : string {
+            using rtsp::string::string;
+        };
+        using parameter = boost::variant<ttl, port, ssrc, mode, string>;
         string transport_protocol;
         string profile;
         boost::optional<string> lower_transport;
