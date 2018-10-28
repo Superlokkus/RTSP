@@ -2,7 +2,7 @@
 
 #include <boost/test/included/unit_test.hpp>
 
-#include <rtsp_headers.hpp>
+#include "../include/rtsp_headers.hpp"
 #include <iterator>
 
 BOOST_AUTO_TEST_SUITE(rtsp_headers)

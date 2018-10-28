@@ -11,8 +11,8 @@
 #include <unordered_map>
 #include <mutex>
 
-#include <rtsp_message.hpp>
-#include <rtsp_session.hpp>
+#include "rtsp_message.hpp"
+#include "rtsp_session.hpp"
 
 namespace rtsp {
 namespace server {

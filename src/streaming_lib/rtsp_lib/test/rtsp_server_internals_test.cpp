@@ -2,8 +2,8 @@
 
 #include <boost/test/included/unit_test.hpp>
 
-#include <rtsp_server_internals.hpp>
-#include <rtsp_headers.hpp>
+#include "../include/rtsp_server_internals.hpp"
+#include "../include/rtsp_headers.hpp"
 
 #include <algorithm>
 

@@ -5,8 +5,8 @@
 #ifndef RTSP_RTSP_METHODS_HPP
 #define RTSP_RTSP_METHODS_HPP
 
-#include <rtsp_definitions.hpp>
-#include <rtsp_session.hpp>
+#include "rtsp_definitions.hpp"
+#include "rtsp_session.hpp"
 
 namespace rtsp {
 namespace methods {

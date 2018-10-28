@@ -1,33 +1,20 @@
 /*! @file streaming_lib.hpp
- *
+ * Convenience header for all user needed headers and also declares symbols for dynamic linking usage
  */
 
 #ifndef STREAMING_LIB_HPP
 #define STREAMING_LIB_HPP
 
-#include <cstdint>
-#include <string>
-#include <memory>
-#include <functional>
+#include <boost/dll.hpp>
 
-namespace rtsp {
-class rtsp_server;
+#include <rtsp_server_pimpl.hpp>
 
-struct rtsp_server_pimpl final {
-    explicit rtsp_server_pimpl(std::string video_file_directory, uint16_t port = 554,
-                             std::function<void(std::exception &)> error_handler = [](auto) {});
+#define API extern "C" BOOST_SYMBOL_EXPORT
 
-    ~rtsp_server_pimpl();
+namespace streaming_lib {
 
-        void graceful_shutdown();
-
-    private:
-    std::unique_ptr<rtsp_server> rtsp_server_;
-    };
-
-    struct rtsp_client final {
-        explicit rtsp_client(std::string host, uint16_t host_port, std::string video_file);
-    };
+API rtsp::rtsp_server_pimpl *start_rtsp_server(const char *video_file_directory, unsigned port) noexcept;
+API void stop_rtsp_server(rtsp::rtsp_server_pimpl *server) noexcept;
 }
 
 #endif //STREAMING_LIB_HPP

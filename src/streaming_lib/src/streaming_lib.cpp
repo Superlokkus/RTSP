@@ -4,19 +4,20 @@
 
 #include <streaming_lib.hpp>
 
-#include <rtsp_server.hpp>
 
-rtsp::rtsp_server_pimpl::rtsp_server_pimpl(std::string video_file_directory, uint16_t port,
-                               std::function<void(std::exception &)> error_handler)
-        : rtsp_server_{std::make_unique<rtsp::rtsp_server>(video_file_directory, port, std::move(error_handler))} {
+rtsp::rtsp_server_pimpl *streaming_lib::start_rtsp_server(const char *video_file_directory, unsigned port) noexcept {
+    rtsp::rtsp_server_pimpl *return_value{nullptr};
 
+    try {
+        return_value = new rtsp::rtsp_server_pimpl(video_file_directory, port, [](auto) {});
+    } catch (...) {
+        delete (return_value);
+        return_value = nullptr;
+    }
+
+    return return_value;
 }
 
-rtsp::rtsp_server_pimpl::~rtsp_server_pimpl() {
-
+void streaming_lib::stop_rtsp_server(rtsp::rtsp_server_pimpl *server) noexcept {
+    delete (server);
 }
-
-void rtsp::rtsp_server_pimpl::graceful_shutdown() {
-    this->rtsp_server_->graceful_shutdown();
-}
-

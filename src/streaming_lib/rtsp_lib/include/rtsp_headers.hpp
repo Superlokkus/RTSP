@@ -16,8 +16,8 @@
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 
-#include <rtsp_definitions.hpp>
-#include <rtsp_message.hpp>
+#include "rtsp_definitions.hpp"
+#include "rtsp_message.hpp"
 
 namespace rtsp {
 namespace headers {
