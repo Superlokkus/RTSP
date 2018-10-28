@@ -31,12 +31,12 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 if (${TEST_ENABLED})
     enable_testing()
-    set(streaming_lib_test_src
+    set(${PROJECT_NAME}_test_src
             ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_grammar_test.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_server_internals_test.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/test/rtsp_headers_test.cpp
             )
-    foreach (testSrc ${streaming_lib_test_src})
+    foreach (testSrc ${${PROJECT_NAME}_test_src})
         get_filename_component(testName ${testSrc} NAME_WE)
         add_executable(${PROJECT_NAME}_${testName} ${testSrc})
         set_property(TARGET ${PROJECT_NAME}_${testName} PROPERTY CXX_STANDARD 14)
