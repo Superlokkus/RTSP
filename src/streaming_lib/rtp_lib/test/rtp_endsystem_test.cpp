@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(RTP_Header_Voigt) {
     BOOST_CHECK_EQUAL(packet.header.extension_bit, false);
     BOOST_CHECK_EQUAL(packet.header.csrc, 0);
     BOOST_CHECK_EQUAL(packet.header.marker, true);
-    //BOOST_CHECK_EQUAL(packet.header.payload_type_field, 26);
+    BOOST_CHECK_EQUAL(packet.header.payload_type_field, 26);
     BOOST_CHECK_EQUAL(packet.header.sequence_number, 62);
     BOOST_CHECK_EQUAL(packet.header.timestamp, 2480);
     BOOST_CHECK_EQUAL(packet.header.ssrc, 0);

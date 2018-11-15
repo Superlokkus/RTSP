@@ -119,9 +119,8 @@ struct custom_jpeg_packet_grammar {
         }
 
         //JPEG profile
-        /*To be RFC 3551 compliant one would now check if (packet.header.payload_type_field == 26)
-         * but my professors don't care and set it to 0 in their "reference implementation" which one has to support
-         * */
+        if (packet.header.payload_type_field != 26)
+            return false;
         if (begin + 4 * 2 > end)
             return false;
         qi::parse(begin, end, qi::byte_, packet.header.type_specific);
