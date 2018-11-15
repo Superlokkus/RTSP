@@ -4,6 +4,7 @@ project(rtsp VERSION 1.0)
 set(CMAKE_CXX_STANDARD 14)
 
 set(TEST_ENABLED TRUE CACHE BOOL "Tests are enabled")
+set(PROJECT_RESSOURCE_DIR ${CMAKE_SOURCE_DIR}/res)
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 find_package(Boost COMPONENTS log system thread REQUIRED)

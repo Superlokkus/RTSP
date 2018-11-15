@@ -7,6 +7,8 @@
 
 #include <cstdint>
 #include <vector>
+#include <algorithm>
+#include <array>
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/karma.hpp>
@@ -26,6 +28,7 @@ struct header {
     uint32_t timestamp{};
     uint32_t ssrc{};
     std::vector<uint32_t> csrcs;
+    std::vector<uint8_t> header_extension; //! including first 32 bits
     using payload_type = Payload;
 };
 
@@ -35,7 +38,7 @@ struct header {
 struct custom_jpeg_payload_header : header<custom_jpeg_payload_header> {
     uint8_t type_specific{0};
     uint_fast32_t fragment_offset{};
-    uint8_t jpeg_type;
+    uint8_t jpeg_type{};
     uint8_t quantization_table{};
     uint8_t image_width{};
     uint8_t image_height{};
@@ -57,24 +60,89 @@ template<typename Iterator>
 struct custom_jpeg_packet_grammar {
     struct parser_id;
 
-    custom_jpeg_packet_grammar() {
-        using ::boost::spirit::qi::uint_parser;
-        using ::boost::spirit::qi::lexeme;
-        using ::boost::spirit::qi::lit;
-        using boost::spirit::qi::omit;
-        using ::boost::spirit::qi::repeat;
-        using boost::spirit::qi::big_word;//atleast16
-        using boost::spirit::qi::big_dword;//atleast32
-
-        std::bitset<8> header_first_octet{0};
-
-
-        //start %= boost::spirit::qi::byte_[header_first_octet = read_out_first_octet(boost::spirit::_1)];
-    }
+    custom_jpeg_packet_grammar() = default;
 
     template<typename Context, typename Skipper, typename Attribute>
     bool parse(Iterator &begin, Iterator end, const Context &, const Skipper &, Attribute &packet) {
-        return {};
+        if (begin == end)
+            return false;
+        if (begin + 3 * 4 > end)
+            return false;
+
+        namespace qi = boost::spirit::qi;
+
+        uint8_t octet_buffer{};
+        Iterator old_begin = begin;
+
+        qi::parse(begin, end, qi::byte_, octet_buffer);
+
+        packet.header.version = (octet_buffer & 0b11000000) >> 6;
+        if (packet.header.version != 2)
+            return false;
+        packet.header.padding_set = (octet_buffer & 0b00100000) >> 5;
+        packet.header.extension_bit = (octet_buffer & 0b00010000) >> 4;
+        packet.header.csrc = octet_buffer & 0x0F;
+
+        octet_buffer = 0;
+        qi::parse(begin, end, qi::byte_, octet_buffer);
+
+        packet.header.marker = (octet_buffer & 0b10000000) >> 7;
+        packet.header.payload_type_field = (octet_buffer & 0b01111111);
+
+        qi::parse(begin, end, qi::big_word, packet.header.sequence_number);
+        qi::parse(begin, end, qi::big_dword, packet.header.timestamp);
+        qi::parse(begin, end, qi::big_dword, packet.header.ssrc);
+
+        if (begin + 4 * packet.header.csrc > end)
+            return false;
+        for (unsigned i = 0; i < packet.header.csrc; ++i) {
+            uint32_t csrc{};
+            qi::parse(begin, end, qi::big_dword, csrc);
+            packet.header.csrcs.push_back(std::move(csrc));
+        }
+        if (packet.header.extension_bit) {
+            if (begin + 4 > end)
+                return false;
+            packet.header.header_extension.clear();
+            std::array<uint8_t, 4> header_extension_header{};
+            uint16_t header_extension_length{};
+            std::copy_n(begin, 4, header_extension_header.begin());
+            std::advance(begin, 4);
+            qi::parse(begin, end, qi::big_word, header_extension_length);
+            packet.header.header_extension.reserve(4 + 4 * header_extension_length);
+            std::copy(header_extension_header.begin(), header_extension_header.end(),
+                      std::back_inserter(packet.header.header_extension));
+            if (begin + 4 * header_extension_length > end)
+                return false;
+            std::copy_n(begin, 4 * header_extension_length, std::back_inserter(packet.header.header_extension));
+            std::advance(begin, 4 * header_extension_length);
+        }
+
+        //JPEG profile
+        /*To be RFC 3551 compliant one would now check if (packet.header.payload_type_field == 26)
+         * but my professors don't care and set it to 0 in their "reference implementation" which one has to support
+         * */
+        if (begin + 4 * 2 > end)
+            return false;
+        qi::parse(begin, end, qi::byte_, packet.header.type_specific);
+
+        std::array<uint8_t, 4> fragment_offset{};
+        qi::parse(begin, end, qi::byte_, fragment_offset[1]);
+        qi::parse(begin, end, qi::byte_, fragment_offset[2]);
+        qi::parse(begin, end, qi::byte_, fragment_offset[3]);
+        qi::parse(fragment_offset.begin(), fragment_offset.end(), qi::big_dword, packet.header.fragment_offset);
+
+        qi::parse(begin, end, qi::byte_, packet.header.jpeg_type);
+        qi::parse(begin, end, qi::byte_, packet.header.quantization_table);
+        qi::parse(begin, end, qi::byte_, packet.header.image_width);
+        qi::parse(begin, end, qi::byte_, packet.header.image_height);
+
+        const auto payload_size = std::distance(begin, end);
+        packet.data.reserve(payload_size);
+        std::copy(begin, end, std::back_inserter(packet.data));
+        std::advance(begin, payload_size);
+
+        return true;
     }
 
     template<typename Context, typename Iterator_>

@@ -19,6 +19,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         $<INSTALL_INTERFACE:include>
         )
 
+configure_file(${PROJECT_RESSOURCE_DIR}/rtp_vogel_example_packet.bin rtp_vogel_example_packet.bin COPYONLY)
+
 if (${TEST_ENABLED})
     enable_testing()
     set(${PROJECT_NAME}_test_src

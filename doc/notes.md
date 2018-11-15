@@ -36,4 +36,5 @@ RTP
 - RFC 2435
 - The RTP timestamp is in units of 90000Hz. 
 - JPEG: Image = 1>= Passes/Frame >=1 Scans >=1 Components <=4
+- JPEG PT should be 26 according RFC 3551  Professor incompliant
 - First five octets == Framelength in octets in ASCII excluding the 5 size octets
