@@ -24,8 +24,11 @@ struct rtp_packet_fixture {
     rtp_packet_fixture() {
         std::ifstream file{"rtp_vogel_example_packet.bin", std::ios::binary};
         BOOST_REQUIRE(file.is_open());
+        file.unsetf(std::ios::skipws);
         std::istream_iterator<uint8_t> begin{file}, end{};
         std::copy(begin, end, std::back_inserter(this->complete_voigt_packet));
+        BOOST_REQUIRE_EQUAL(this->complete_voigt_packet.at(6), 0x09);
+        BOOST_REQUIRE_EQUAL(this->complete_voigt_packet.at(7), 0xB0);
     }
 
     void parse_phrase(const std::vector<uint8_t> &phrase) {
