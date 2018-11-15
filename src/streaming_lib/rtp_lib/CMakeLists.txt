@@ -4,6 +4,8 @@ project(rtp_lib VERSION 1.0)
 set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtp_endsystem.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtp_endsystem.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtp_packet.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtp_packet.hpp
         )
 
 
