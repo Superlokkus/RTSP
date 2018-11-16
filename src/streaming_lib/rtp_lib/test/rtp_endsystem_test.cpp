@@ -67,12 +67,93 @@ BOOST_AUTO_TEST_CASE(RTP_Voigt_JPEG_custom_style) {
 
 BOOST_AUTO_TEST_SUITE_END() //rtp_packet_tests
 
-BOOST_AUTO_TEST_CASE(RTP_Header_Generation) {
+BOOST_AUTO_TEST_CASE(RTP_default_header_generation) {
     rtp::packet::custom_jpeg_packet packet{};
     std::vector<uint8_t> output;
     rtp::packet::custom_jpeg_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
     const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, packet);
     BOOST_CHECK(success);
+    BOOST_CHECK_EQUAL(output.at(0), 0x80u);
+    for (int i = 0; i < 3 + 4 * 4; ++i) {
+        BOOST_CHECK_EQUAL(output.at(i), 0x00u);
+    }
+
+}
+
+BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
+    rtp::packet::custom_jpeg_packet packet{};
+    packet.header.csrc = 3u;
+    packet.header.marker = true;
+    packet.header.payload_type_field = 26u;
+    packet.header.sequence_number = 1337u;
+    packet.header.timestamp = 1337u * 1337u;
+    packet.header.ssrc = 0x1C4A7EB4;
+    packet.header.csrcs.push_back(56u * 1337u);
+    packet.header.csrcs.push_back(0u);
+    packet.header.csrcs.push_back(42u * 56u);
+    packet.header.type_specific = 0x91u;
+    packet.header.fragment_offset = 0xF0FFFBu;
+    packet.header.jpeg_type = 11u;
+    packet.header.quantization_table = 13u;
+    packet.header.image_width = 17u;
+    packet.header.image_height = 19u;
+    packet.data = std::vector<uint8_t>{32, 0xEu};
+
+    std::vector<uint8_t> output;
+    rtp::packet::custom_jpeg_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, packet);
+    BOOST_REQUIRE(success);
+    BOOST_CHECK_EQUAL(output.at(0), 0x83u);
+    BOOST_CHECK_EQUAL(output.at(1), 0x9Au);
+    BOOST_CHECK_EQUAL(output.at(2), 0x05u);
+    BOOST_CHECK_EQUAL(output.at(3), 0x39u);
+
+    BOOST_CHECK_EQUAL(output.at(0 + 4), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4), 0x1Bu);
+    BOOST_CHECK_EQUAL(output.at(2 + 4), 0x46u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4), 0xB1u);
+
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 2), 0x1Cu);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 2), 0x4Au);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 2), 0x7Eu);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 2), 0xB4u);
+
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 3), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 3), 0x01u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 3), 0x24u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 3), 0x78u);
+
+    //CSRCS
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 4), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 4), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 4), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 4), 0x00u);
+
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 5), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 5), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 5), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 5), 0x00u);
+
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 6), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 6), 0x00u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 6), 0x09u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 6), 0x30u);
+
+    //JPEG
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 7), 0x91u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 7), 0xF0u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 7), 0xFFu);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 7), 0xFBu);
+
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 8), 11u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 8), 13u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 8), 17u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 8), 19u);
+
+    for (int i = 0; i < 32; ++i) {
+        BOOST_CHECK_EQUAL(output.at(i + 4 * 9), 0xEu);
+    }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
