@@ -164,9 +164,8 @@ struct custom_jpeg_packet_generator {
     };
 
     template<typename Sink, typename Context, typename Delimiter, typename Attribute>
-    bool generate(Sink &sink, Context &, Delimiter const &delim, Attribute const &real_packet) const {
+    bool generate(Sink &sink, Context &, Delimiter const &delim, Attribute const &packet) const {
         namespace karma = boost::spirit::karma;
-        const rtp::packet::custom_jpeg_packet &packet = real_packet; //TODO Get rid of this type helper for IDE later
 
         if (packet.header.version != 2u)
             return false;
@@ -191,6 +190,20 @@ struct custom_jpeg_packet_generator {
         for (const auto &csrc : packet.header.csrcs)
             karma::generate(sink, karma::big_dword, csrc);
 
+        karma::generate(sink, karma::byte_, packet.header.type_specific);
+        std::array<uint8_t, 4> fragment_offset{};
+        karma::generate(fragment_offset.begin(), karma::big_dword, packet.header.fragment_offset);
+        karma::generate(sink, karma::byte_, fragment_offset[1]);
+        karma::generate(sink, karma::byte_, fragment_offset[2]);
+        karma::generate(sink, karma::byte_, fragment_offset[3]);
+
+        karma::generate(sink, karma::byte_, packet.header.jpeg_type);
+        karma::generate(sink, karma::byte_, packet.header.quantization_table);
+        karma::generate(sink, karma::byte_, packet.header.image_width);
+        karma::generate(sink, karma::byte_, packet.header.image_height);
+
+        for (auto octet : packet.data)
+            karma::generate(sink, karma::byte_, octet);
 
         return true;
     }

@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
     packet.header.quantization_table = 13u;
     packet.header.image_width = 17u;
     packet.header.image_height = 19u;
-    packet.data = std::vector<uint8_t>{32, 0xEu};
+    packet.data = std::vector<uint8_t>(32, 0x0Eu);
 
     std::vector<uint8_t> output;
     rtp::packet::custom_jpeg_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
     BOOST_CHECK_EQUAL(output.at(3 + 4 * 7), 19u);
 
     for (int i = 0; i < 32; ++i) {
-        BOOST_CHECK_EQUAL(output.at(i + 4 * 8), 0xEu);
+        BOOST_CHECK_EQUAL(output.at(i + 4 * 8), 0x0Eu);
     }
 
 }
