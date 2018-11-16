@@ -67,4 +67,12 @@ BOOST_AUTO_TEST_CASE(RTP_Voigt_JPEG_custom_style) {
 
 BOOST_AUTO_TEST_SUITE_END() //rtp_packet_tests
 
+BOOST_AUTO_TEST_CASE(RTP_Header_Generation) {
+    rtp::packet::custom_jpeg_packet packet{};
+    std::vector<uint8_t> output;
+    rtp::packet::custom_jpeg_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, packet);
+    BOOST_CHECK(success);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -63,7 +63,7 @@ struct custom_jpeg_packet_grammar {
     custom_jpeg_packet_grammar() = default;
 
     template<typename Context, typename Skipper, typename Attribute>
-    bool parse(Iterator &begin, Iterator end, const Context &, const Skipper &, Attribute &packet) {
+    bool parse(Iterator &begin, Iterator end, const Context &, const Skipper &, Attribute &packet) const {
         if (begin == end)
             return false;
         if (begin + 3 * 4 > end)
@@ -152,6 +152,27 @@ struct custom_jpeg_packet_grammar {
 
 private:
 
+};
+
+template<typename OutputIterator>
+struct custom_jpeg_packet_generator {
+    struct generator_id;
+    typedef boost::mpl::int_<boost::spirit::karma::generator_properties::no_properties> properties;
+    template<typename Context>
+    struct attribute {
+        typedef custom_jpeg_packet type;
+    };
+
+    template<typename Sink, typename Context, typename Delimiter, typename Attribute>
+    bool generate(Sink &sink, Context &, Delimiter const &delim, Attribute const &packet) const {
+        namespace qi = boost::spirit::qi;
+        if (packet.header.version != 2u)
+            return false;
+        sink = 42;
+        ++sink = 1337;
+
+        return true;
+    }
 };
 
 
