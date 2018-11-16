@@ -164,12 +164,33 @@ struct custom_jpeg_packet_generator {
     };
 
     template<typename Sink, typename Context, typename Delimiter, typename Attribute>
-    bool generate(Sink &sink, Context &, Delimiter const &delim, Attribute const &packet) const {
-        namespace qi = boost::spirit::qi;
+    bool generate(Sink &sink, Context &, Delimiter const &delim, Attribute const &real_packet) const {
+        namespace karma = boost::spirit::karma;
+        const rtp::packet::custom_jpeg_packet &packet = real_packet; //TODO Get rid of this type helper for IDE later
+
         if (packet.header.version != 2u)
             return false;
-        sink = 42;
-        ++sink = 1337;
+        uint8_t octet_buffer{};
+        octet_buffer |= packet.header.version << 6;
+        octet_buffer |= packet.header.padding_set << 5;
+        octet_buffer |= packet.header.extension_bit << 4;
+        octet_buffer |= packet.header.csrc;
+        karma::generate(sink, karma::byte_, octet_buffer);
+
+        octet_buffer = 0u;
+        octet_buffer |= packet.header.marker << 7;
+        octet_buffer |= packet.header.payload_type_field;
+        karma::generate(sink, karma::byte_, octet_buffer);
+
+        karma::generate(sink, karma::big_word, packet.header.sequence_number);
+        karma::generate(sink, karma::big_dword, packet.header.timestamp);
+        karma::generate(sink, karma::big_dword, packet.header.ssrc);
+
+        if (packet.header.csrc != packet.header.csrcs.size())
+            return false;
+        for (const auto &csrc : packet.header.csrcs)
+            karma::generate(sink, karma::big_dword, csrc);
+
 
         return true;
     }

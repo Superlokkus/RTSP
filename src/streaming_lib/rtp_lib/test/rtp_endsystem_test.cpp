@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(RTP_default_header_generation) {
     const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, packet);
     BOOST_CHECK(success);
     BOOST_CHECK_EQUAL(output.at(0), 0x80u);
-    for (int i = 0; i < 3 + 4 * 4; ++i) {
+    for (int i = 1; i < 3 + 4 * 4; ++i) {
         BOOST_CHECK_EQUAL(output.at(i), 0x00u);
     }
 
@@ -118,12 +118,12 @@ BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
     BOOST_CHECK_EQUAL(output.at(2 + 4 * 2), 0x7Eu);
     BOOST_CHECK_EQUAL(output.at(3 + 4 * 2), 0xB4u);
 
+    //CSRCS
     BOOST_CHECK_EQUAL(output.at(0 + 4 * 3), 0x00u);
     BOOST_CHECK_EQUAL(output.at(1 + 4 * 3), 0x01u);
     BOOST_CHECK_EQUAL(output.at(2 + 4 * 3), 0x24u);
     BOOST_CHECK_EQUAL(output.at(3 + 4 * 3), 0x78u);
 
-    //CSRCS
     BOOST_CHECK_EQUAL(output.at(0 + 4 * 4), 0x00u);
     BOOST_CHECK_EQUAL(output.at(1 + 4 * 4), 0x00u);
     BOOST_CHECK_EQUAL(output.at(2 + 4 * 4), 0x00u);
@@ -131,27 +131,22 @@ BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
 
     BOOST_CHECK_EQUAL(output.at(0 + 4 * 5), 0x00u);
     BOOST_CHECK_EQUAL(output.at(1 + 4 * 5), 0x00u);
-    BOOST_CHECK_EQUAL(output.at(2 + 4 * 5), 0x00u);
-    BOOST_CHECK_EQUAL(output.at(3 + 4 * 5), 0x00u);
-
-    BOOST_CHECK_EQUAL(output.at(0 + 4 * 6), 0x00u);
-    BOOST_CHECK_EQUAL(output.at(1 + 4 * 6), 0x00u);
-    BOOST_CHECK_EQUAL(output.at(2 + 4 * 6), 0x09u);
-    BOOST_CHECK_EQUAL(output.at(3 + 4 * 6), 0x30u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 5), 0x09u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 5), 0x30u);
 
     //JPEG
-    BOOST_CHECK_EQUAL(output.at(0 + 4 * 7), 0x91u);
-    BOOST_CHECK_EQUAL(output.at(1 + 4 * 7), 0xF0u);
-    BOOST_CHECK_EQUAL(output.at(2 + 4 * 7), 0xFFu);
-    BOOST_CHECK_EQUAL(output.at(3 + 4 * 7), 0xFBu);
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 6), 0x91u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 6), 0xF0u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 6), 0xFFu);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 6), 0xFBu);
 
-    BOOST_CHECK_EQUAL(output.at(0 + 4 * 8), 11u);
-    BOOST_CHECK_EQUAL(output.at(1 + 4 * 8), 13u);
-    BOOST_CHECK_EQUAL(output.at(2 + 4 * 8), 17u);
-    BOOST_CHECK_EQUAL(output.at(3 + 4 * 8), 19u);
+    BOOST_CHECK_EQUAL(output.at(0 + 4 * 7), 11u);
+    BOOST_CHECK_EQUAL(output.at(1 + 4 * 7), 13u);
+    BOOST_CHECK_EQUAL(output.at(2 + 4 * 7), 17u);
+    BOOST_CHECK_EQUAL(output.at(3 + 4 * 7), 19u);
 
     for (int i = 0; i < 32; ++i) {
-        BOOST_CHECK_EQUAL(output.at(i + 4 * 9), 0xEu);
+        BOOST_CHECK_EQUAL(output.at(i + 4 * 8), 0xEu);
     }
 
 }
