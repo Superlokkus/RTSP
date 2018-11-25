@@ -112,7 +112,7 @@ std::unique_ptr<std::istream> get_jpeg_stream(const rtsp::request_uri &uri, cons
     bool parsed = qi::parse(uri.cbegin(), uri.cend(),
                             (qi::lit("rtsp:") | qi::lit("rtspu:")) >> qi::lit("//") >> qi::omit[
                                     *(rtsp::ns::char_ - "/")
-                            ] >> qi::lit("/") >> rtsp::ns::alnum, file_name);
+                            ] >> qi::lit("/") >> rtsp::ns::alnum >> *rtsp::ns::print, file_name);
 
     if (!parsed)
         return stream;
