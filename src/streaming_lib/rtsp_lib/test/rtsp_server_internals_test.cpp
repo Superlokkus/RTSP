@@ -24,13 +24,16 @@ BOOST_AUTO_TEST_CASE(harmonize_headers_test) {
 }
 
 struct rtsp_server_internals_fixture {
-    rtsp_server_internals_fixture() {
+    rtsp_server_internals_fixture() :
+            io_context(),
+            fresh_server_state(io_context),
+            some_sessions_server_state(io_context) {
         /*auto first_session = some_sessions_server_state.handle_incoming_request(
                 {"SETUP", "rtsp://foo.com/bar.file",1,0, {{"CSeq", "0"}}});*/
     }
 
+    boost::asio::io_context io_context;
     rtsp::server::rtsp_server_state fresh_server_state;
-
     rtsp::server::rtsp_server_state some_sessions_server_state;
     /*!
      * Session, next CSeq, last Method
@@ -49,7 +52,7 @@ BOOST_FIXTURE_TEST_SUITE(rtsp_server_internals_fixture_suite, rtsp_server_intern
 BOOST_AUTO_TEST_CASE(valid_options_request_test) {
     const rtsp::response correct_response{1, 0, 200, "OK"};
 
-    const auto generated_response = fresh_server_state.handle_incoming_request(valid_options_request);
+    const auto generated_response = fresh_server_state.handle_incoming_request(valid_options_request, {});
     BOOST_CHECK_EQUAL(generated_response.status_code, correct_response.status_code);
     auto cseq_it = std::find_if(generated_response.headers.cbegin(), generated_response.headers.cend(),
                                 [](const auto &value) {
@@ -62,7 +65,7 @@ BOOST_AUTO_TEST_CASE(valid_options_request_test) {
 BOOST_AUTO_TEST_CASE(invalid_options_request_test) {
     const rtsp::response correct_response{1, 0, 400, "Bad Request", {}};
 
-    const auto generated_response = fresh_server_state.handle_incoming_request(invalid_options_request);
+    const auto generated_response = fresh_server_state.handle_incoming_request(invalid_options_request, {});
     BOOST_CHECK_EQUAL(generated_response.status_code, correct_response.status_code);
 }
 

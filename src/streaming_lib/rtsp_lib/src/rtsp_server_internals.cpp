@@ -11,15 +11,20 @@
 #include <boost/log/trivial.hpp>
 
 
-rtsp::server::rtsp_server_state::rtsp_server_state() :
+rtsp::server::rtsp_server_state::rtsp_server_state(boost::asio::io_context &io_context,
+                                                   fileapi::path resource_root) :
+        ressource_root_(std::move(resource_root)),
         methods_{
                 {method{"OPTIONS"},  std::bind(&rtsp_server_state::options, this, std::placeholders::_2)},
-                {method{"SETUP"},    &methods::setup},
+                {method{"SETUP"},    std::bind(&methods::setup,
+                                               std::placeholders::_1, std::placeholders::_2, ressource_root_,
+                                               std::ref(io_context))},
                 {method{"TEARDOWN"}, &methods::teardown},
         } {
 }
 
-auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &request)
+auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &request,
+                                                              const boost::asio::ip::address &requester)
 -> response {
     const auto headers = rtsp::headers::normalize_headers(request.headers);
 
@@ -38,12 +43,16 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
     } else if (request.method_or_extension == "OPTIONS") {
         body body{};
         std::tie(response, body) = options(std::make_pair(request, headers));
+    } else if (request.method_or_extension == "SETUP" && headers.count("session")) {
+        response.status_code = 459;
+        response.reason_phrase = "Aggregate Operation Not Allowed";
     } else if (request.method_or_extension == "SETUP") {
         rtsp_session new_session{};
         auto identifier = new_session.identifier();
         std::lock_guard<std::mutex> lock{this->sessions_mutex_};
         rtsp_session &inserted_session = this->sessions_.emplace
                 (std::move(identifier), std::move(new_session)).first->second;
+        inserted_session.last_seen_request_address = requester;
         response = this->methods_.at(request.method_or_extension)
                 (inserted_session, std::make_pair(request, headers)).first;
     } else if (!headers.count("session")) {
@@ -63,6 +72,7 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
                 response.status_code = 454;
                 response.reason_phrase = "Session not found";
             } else {
+                session_it->second.last_seen_request_address = requester;
                 response = this->methods_.at(request.method_or_extension)(session_it->second,
                                                                           std::make_pair(request, headers)).first;
                 if (request.method_or_extension == "TEARDOWN") {

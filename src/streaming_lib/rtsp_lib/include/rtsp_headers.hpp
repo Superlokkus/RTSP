@@ -32,7 +32,7 @@ normalized_headers normalize_headers(const raw_headers &raw_headers);
 struct transport {
     struct transport_spec {
         using ttl = uint_fast16_t;
-        using port_number = uint_fast32_t;
+        using port_number = uint16_t;
         using ssrc = uint32_t;
         using port_range = std::pair<port_number, port_number>;
         struct port {

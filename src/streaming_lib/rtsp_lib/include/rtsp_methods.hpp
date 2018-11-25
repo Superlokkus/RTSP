@@ -5,6 +5,8 @@
 #ifndef RTSP_RTSP_METHODS_HPP
 #define RTSP_RTSP_METHODS_HPP
 
+#include <boost/asio.hpp>
+
 #include "rtsp_definitions.hpp"
 #include "rtsp_session.hpp"
 
@@ -16,7 +18,8 @@ const uint_fast16_t common_rtsp_minor_version = 0;
 
 response common_response_sekeleton(const rtsp::rtsp_session &, const rtsp::internal_request &);
 
-std::pair<response, body> setup(rtsp::rtsp_session &, const rtsp::internal_request &);
+std::pair<response, body> setup(rtsp::rtsp_session &, const rtsp::internal_request &,
+                                const fileapi::path &ressource_root, boost::asio::io_context &io_context);
 
 std::pair<response, body> play(rtsp::rtsp_session &, const rtsp::internal_request &);
 

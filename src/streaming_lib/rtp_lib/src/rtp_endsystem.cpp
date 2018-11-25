@@ -90,7 +90,7 @@ void rtp::unicast_jpeg_rtp_session::send_next_packet_handler(const boost::system
                                 std::bind([](auto buffer) {}, buffer));
 
     this->send_packet_timer_.expires_at(this->send_packet_timer_.expiry()
-                                        + boost::asio::chrono::milliseconds(unicast_jpeg_rtp_session::frame_period));
+                                        + boost::asio::chrono::milliseconds(this->frame_period));
     this->send_packet_timer_.async_wait(boost::asio::bind_executor(this->strand_,
                                                                    std::bind(
                                                                            &unicast_jpeg_rtp_session::send_next_packet_handler,

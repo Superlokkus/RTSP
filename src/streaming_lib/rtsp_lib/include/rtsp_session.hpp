@@ -5,8 +5,13 @@
 #ifndef RTSP_RTSP_SESSION_HPP
 #define RTSP_RTSP_SESSION_HPP
 
+#include <memory>
+
+#include <boost/asio.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
+
+#include <rtp_endsystem.hpp>
 
 namespace rtsp {
 
@@ -47,10 +52,12 @@ using session_identifier = boost::uuids::uuid;
             this->state_ = new_state;
         }
 
+        std::unique_ptr<rtp::unicast_jpeg_rtp_session> rtp_session{};
+        boost::asio::ip::address last_seen_request_address{};
+
     private:
         rtsp::session_identifier session_identifier_{make_new_session_identifier()};
         state state_{state::init};
-
     };
 
 }

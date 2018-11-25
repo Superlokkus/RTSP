@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_CASE(transport_gen_test) {
-    rtsp::headers::transport::transport_spec spec1{"RTP", "AVP", ::string > boost::make_optional<rtsp("UDP")};
+    rtsp::headers::transport::transport_spec spec1{"RTP", "AVP", boost::make_optional<rtsp::string>("UDP")};
     rtsp::headers::transport::transport_spec spec2{"RTP", "AVP", boost::none};
     rtsp::headers::transport transport{{spec1, spec2}};
     std::string output;

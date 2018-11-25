@@ -40,8 +40,8 @@ private:
 
     std::atomic<bool> running_{false};
 
-    static constexpr uint8_t payload_type_number{26u};
-    static constexpr uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
+    static const uint8_t payload_type_number{26u};
+    const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
     using frame_counter_t = uint_fast16_t;
     static constexpr frame_counter_t frame_absolute_count{500u};//!<ms Should be read from jpeg headers I guess
 

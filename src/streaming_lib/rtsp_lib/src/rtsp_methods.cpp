@@ -2,8 +2,10 @@
 
 #include <algorithm>
 #include <random>
+#include <fstream>
 
 #include <rtsp_headers.hpp>
+#include <rtp_endsystem.hpp>
 
 #include <boost/uuid/uuid_io.hpp>
 
@@ -102,8 +104,31 @@ auto get_acceptable_transport(const rtsp::headers::transport &requested)
     return choosen = choosen_spec;
 }
 
+std::unique_ptr<std::istream> get_jpeg_stream(const rtsp::request_uri &uri, const rtsp::fileapi::path &ressource_root) {
+    std::unique_ptr<std::istream> stream{};
+
+    std::string file_name;
+    using namespace boost::spirit;
+    bool parsed = qi::parse(uri.cbegin(), uri.cend(),
+                            (qi::lit("rtsp:") | qi::lit("rtspu:")) >> qi::lit("//") >> qi::omit[
+                                    *(rtsp::ns::char_ - "/")
+                            ] >> qi::lit("/") >> rtsp::ns::alnum, file_name);
+
+    if (!parsed)
+        return stream;
+    try {
+        auto ressource_path = rtsp::fileapi::canonical(file_name, ressource_root);
+        stream = std::make_unique<std::fstream>(ressource_path.string());
+    } catch (const boost::filesystem::filesystem_error &e) {
+        return stream;
+    }
+    return stream;
+}
+
 std::pair<rtsp::response, rtsp::body> rtsp::methods::setup(rtsp::rtsp_session &session,
-                                                           const rtsp::internal_request &request) {
+                                                           const rtsp::internal_request &request,
+                                                           const fileapi::path &ressource_root,
+                                                           boost::asio::io_context &io_context) {
     rtsp::response response{common_response_sekeleton(session, request)};
 
     rtsp::headers::transport request_transport{};
@@ -132,6 +157,36 @@ std::pair<rtsp::response, rtsp::body> rtsp::methods::setup(rtsp::rtsp_session &s
         return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
     }
 
+    if (session.session_state() != rtsp_session::state::init) {
+        response.status_code = 455;
+        response.reason_phrase = rtsp::string{"Method Not Valid In This State"};
+        return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+    }
+
+    auto ressource_path = get_jpeg_stream(request.first.uri, ressource_root);
+    if (!ressource_path) {
+        response.status_code = 404;
+        response.reason_phrase = rtsp::string{"Ressource \""} + request.first.uri + "\" Not Found";
+        return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+    }
+
+    const auto &client_port = boost::get<headers::transport::transport_spec::port_number>(
+            boost::get<headers::transport::transport_spec::port>(choosen_transport.value().parameters.at(1)).
+                    port_numbers);
+    const auto &server_port = boost::get<headers::transport::transport_spec::port_number>(
+            boost::get<headers::transport::transport_spec::port>(choosen_transport.value().parameters.at(3)).
+                    port_numbers);
+    const auto &ssrc = boost::get<headers::transport::transport_spec::ssrc>(choosen_transport.value().parameters.at(2));
+
+    session.rtp_session = std::make_unique<rtp::unicast_jpeg_rtp_session>(
+            boost::asio::ip::udp::endpoint{session.last_seen_request_address, client_port},
+            server_port,
+            ssrc,
+            std::move(ressource_path),
+            io_context
+    );
+
+    session.set_session_state(rtsp_session::state::ready);
     rtsp::headers::transport response_transport{};
     response_transport.specifications.push_back(choosen_transport.value());
 

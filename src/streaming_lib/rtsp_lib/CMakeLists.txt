@@ -20,6 +20,7 @@ set(${PROJECT_NAME}_implementation_files
 
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_implementation_files})
+target_link_libraries(${PROJECT_NAME} rtp_lib ${Boost_LIBRARIES})
 set_property(TARGET ${PROJECT_NAME} PROPERTY LINKER_LANGUAGE CXX)
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 

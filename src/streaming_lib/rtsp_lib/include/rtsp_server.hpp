@@ -13,16 +13,12 @@
 #include <memory>
 #include <tuple>
 
-#define BOOST_FILESYSTEM_NO_DEPRECATED
-
-#include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
 
 #include "rtsp_message.hpp"
 #include "rtsp_server_internals.hpp"
 
 namespace rtsp {
-    namespace fileapi = boost::filesystem;
 
 class rtsp_server final {
     public:
@@ -51,8 +47,8 @@ class rtsp_server final {
 
     private:
         fileapi::path ressource_root_;
-        rtsp::server::rtsp_server_state server_state_;
         boost::asio::io_context io_context_;
+    rtsp::server::rtsp_server_state server_state_;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
         std::vector<std::thread> io_run_threads_;
 

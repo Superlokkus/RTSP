@@ -64,7 +64,7 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
             response = rtsp::response{server_state_.rtsp_major_version, server_state_.rtsp_minor_version,
                                       400, std::move(reason)};
         } else {
-            response = server_state_.handle_incoming_request(request);
+            response = server_state_.handle_incoming_request(request, this->socket_.remote_endpoint().address());
         }
 
         rtsp::generate_response(std::back_inserter(last_response_string_), response);
@@ -102,6 +102,7 @@ rtsp::rtsp_server::rtsp_server(boost::filesystem::path ressource_root,
                                std::function<void(std::exception &)> error_handler)
         : ressource_root_{std::move(ressource_root)},
           io_context_{BOOST_ASIO_CONCURRENCY_HINT_SAFE},
+          server_state_(io_context_, ressource_root_),
           work_guard_{boost::asio::make_work_guard(io_context_)},
           udp_v4_socket_{std::forward_as_tuple(
                   boost::asio::ip::udp::socket{io_context_,
@@ -123,8 +124,8 @@ rtsp::rtsp_server::rtsp_server(boost::filesystem::path ressource_root,
           tcp_v6_acceptor_{io_context_, boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v6(), port_number}},
           error_handler_{std::move(error_handler)} {
 
-    if (!fileapi::exists(ressource_root_))
-        throw std::runtime_error("Ressource root not existing");
+    if (!fileapi::exists(ressource_root_) || !fileapi::is_directory(ressource_root_))
+        throw std::runtime_error("Ressource root not existing or not a directory");
 
     const auto thread_count{std::max<unsigned>(std::thread::hardware_concurrency(), 1)};
 
@@ -263,7 +264,7 @@ void rtsp::rtsp_server::handle_new_incoming_message(std::shared_ptr<std::vector<
         response = rtsp::response{server_state.rtsp_major_version, server_state.rtsp_minor_version,
                                   400, std::move(reason)};
     } else {
-        response = server_state.handle_incoming_request(request);
+        response = server_state.handle_incoming_request(request, received_from_endpoint.address());
     }
     auto response_string = std::make_shared<std::string>();
     rtsp::generate_response(std::back_inserter(*response_string), response);

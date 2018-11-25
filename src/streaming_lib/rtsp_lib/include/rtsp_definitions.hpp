@@ -12,9 +12,14 @@
 #include <vector>
 #include <cstdint>
 
+#define BOOST_FILESYSTEM_NO_DEPRECATED
+
+#include <boost/filesystem.hpp>
 #include <boost/variant.hpp>
 
 namespace rtsp {
+namespace fileapi = boost::filesystem;
+
 using char_t = char;
 using string = std::basic_string<char_t>;
 using method = string;

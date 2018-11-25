@@ -11,8 +11,10 @@
 #include <unordered_map>
 #include <mutex>
 
-#include "rtsp_message.hpp"
-#include "rtsp_session.hpp"
+#include <boost/asio.hpp>
+
+#include <rtsp_message.hpp>
+#include <rtsp_session.hpp>
 
 namespace rtsp {
 namespace server {
@@ -30,13 +32,14 @@ namespace server {
  */
 class rtsp_server_state final {
 public:
-    explicit rtsp_server_state();
+    explicit rtsp_server_state(boost::asio::io_context &io_context,
+                               fileapi::path resource_root = fileapi::current_path());
 
     const uint_fast16_t rtsp_major_version = 1;
     const uint_fast16_t rtsp_minor_version = 0;
 
 
-    response handle_incoming_request(const request &request);
+    response handle_incoming_request(const request &request, const boost::asio::ip::address &requester);
 
     /*! @brief The duty of generating session ids and destroying them is done by @ref rtsp_server_state
      *
@@ -48,6 +51,7 @@ public:
     std::pair<response, body> options(const internal_request &request) const;
 
 private:
+    fileapi::path ressource_root_;
     std::mutex sessions_mutex_;
     std::unordered_map<rtsp::session_identifier, rtsp::rtsp_session> sessions_;
     std::unordered_map<rtsp::method, method_implementation> methods_;

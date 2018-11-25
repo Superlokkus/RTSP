@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(streaming_lib VERSION 1.0)
 
-add_subdirectory(rtsp_lib)
 add_subdirectory(rtp_lib)
+add_subdirectory(rtsp_lib)
 
 set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/src/streaming_lib.cpp
