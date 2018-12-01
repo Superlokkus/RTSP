@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <iterator>
+#include <atomic>
+#include <chrono>
 
 #include <rtsp_server.hpp>
 #include <boost/spirit/include/qi_match.hpp>
@@ -18,7 +20,7 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
      * @param server_state RTSP server state for side effects of the tcp connection
      */
     tcp_connection(boost::asio::io_context &io_context, server::rtsp_server_state &server_state)
-            : socket_(io_context), server_state_(server_state) {
+            : socket_(io_context), server_state_(server_state), timeout_timer_(io_context) {
 
     }
 
@@ -31,12 +33,20 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
      * Calls @ref header_read as handler for the read in raw handler
      */
     void start() {
+        this->last_request_time_point_ = std::chrono::steady_clock::now();
         boost::asio::async_read_until(this->socket_, this->in_streambuf_, boost::asio::string_view{"\r\n\r\n"},
                                       [me = shared_from_this()](
                                               const boost::system::error_code &error,
                                               std::size_t bytes_transferred) {
                                           return me->header_read(error, bytes_transferred);
                                       });
+        this->timeout_timer_.expires_at(this->last_request_time_point_.load()
+                                        + this->timeout_period_);
+        this->timeout_timer_.async_wait([me = shared_from_this()](
+                const boost::system::error_code &error) {
+            return me->timeout_check(error);
+        });
+
     }
 
     /*! @brief Parses the raw header and either sends a bad request response on failure or lets the
@@ -46,8 +56,13 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
      */
     void header_read(const boost::system::error_code &error,
                      std::size_t bytes_transferred) {
-        if (error)
+        if (error == boost::asio::error::eof || error == boost::asio::error::connection_reset) {
+            //this->server_state_.handle_timeout_of_host(this->socket_.remote_endpoint().address());
+            return;
+        } else if (error) {
             throw std::runtime_error{error.message()};
+        }
+        this->last_request_time_point_ = std::chrono::steady_clock::now();
 
         rtsp_request_grammar<boost::spirit::multi_pass<std::istreambuf_iterator<char>>> request_grammar{};
         rtsp::request request;
@@ -74,6 +89,13 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
                  std::size_t bytes_transferred) {
             return me->response_sent(error, bytes_transferred);
         });
+
+        boost::asio::async_read_until(this->socket_, this->in_streambuf_, boost::asio::string_view{"\r\n\r\n"},
+                                      [me = shared_from_this()](
+                                              const boost::system::error_code &error,
+                                              std::size_t bytes_transferred) {
+                                          return me->header_read(error, bytes_transferred);
+                                      });
     }
 
     /*! @brief Handler stub to check for errors and upheld lifetime while sending async
@@ -87,7 +109,26 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
             throw std::runtime_error{error.message()};
         if (bytes_transferred != last_response_string_.size())
             throw std::runtime_error{"TCP bytes sent not equal"};
+    }
 
+    /*! @brief Ensures proper timeout mechanism
+     *
+     * @param error
+     */
+    void timeout_check(const boost::system::error_code &error) {
+        if (error)
+            throw std::runtime_error{error.message()};
+        if (std::chrono::steady_clock::now() - this->last_request_time_point_.load() > timeout_period_) {
+            this->server_state_.handle_timeout_of_host(this->socket_.remote_endpoint().address());
+            this->socket_.close();
+        } else {
+            this->timeout_timer_.expires_at(this->timeout_timer_.expiry()
+                                            + this->timeout_period_);
+            this->timeout_timer_.async_wait([me = shared_from_this()](
+                    const boost::system::error_code &error) {
+                return me->timeout_check(error);
+            });
+        }
     }
 
 private:
@@ -95,6 +136,9 @@ private:
     boost::asio::streambuf in_streambuf_;
     server::rtsp_server_state &server_state_;
     std::string last_response_string_;
+    const std::chrono::seconds timeout_period_{60u};
+    std::atomic<std::chrono::steady_clock::time_point> last_request_time_point_;
+    boost::asio::steady_timer timeout_timer_;
 };
 
 rtsp::rtsp_server::rtsp_server(boost::filesystem::path ressource_root,

@@ -9,6 +9,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/log/trivial.hpp>
+#include <rtsp_server_internals.hpp>
 
 
 rtsp::server::rtsp_server_state::rtsp_server_state(boost::asio::io_context &io_context,
@@ -53,6 +54,7 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
         rtsp_session &inserted_session = this->sessions_.emplace
                 (std::move(identifier), std::move(new_session)).first->second;
         inserted_session.last_seen_request_address = requester;
+        this->sessions__by_host_.emplace(requester, inserted_session.identifier());
         response = this->methods_.at(request.method_or_extension)
                 (inserted_session, std::make_pair(request, headers)).first;
     } else if (!headers.count("session")) {
@@ -76,7 +78,7 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
                 response = this->methods_.at(request.method_or_extension)(session_it->second,
                                                                           std::make_pair(request, headers)).first;
                 if (request.method_or_extension == "TEARDOWN") {
-                    this->sessions_.erase(session_it);
+                    this->delete_session(session_it);
                 }
             }
         }
@@ -102,4 +104,20 @@ auto rtsp::server::rtsp_server_state::options(const internal_request &request) c
     return std::make_pair(std::move(response), "");
 }
 
+void rtsp::server::rtsp_server_state::handle_timeout_of_host(const boost::asio::ip::address &host) {
+    BOOST_LOG_TRIVIAL(info) << "Host: " << host << " timed out";
+    std::lock_guard<std::mutex> lock{this->sessions_mutex_};
+    for (auto host_session_it = this->sessions__by_host_.find(host);
+         host_session_it != this->sessions__by_host_.end();
+         host_session_it = this->sessions__by_host_.find(host)) {
+        auto session_it = this->sessions_.find(host_session_it->second);
+        if (session_it != this->sessions_.end())
+            this->delete_session(session_it);
+        this->sessions__by_host_.erase(host_session_it);
+    }
+}
 
+void rtsp::server::rtsp_server_state::delete_session(std::unordered_map<rtsp::session_identifier, rtsp::rtsp_session>
+                                                     ::iterator &session_it) {
+    this->sessions_.erase(session_it);
+}
