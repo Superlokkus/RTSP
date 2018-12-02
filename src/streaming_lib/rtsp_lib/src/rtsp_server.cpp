@@ -20,7 +20,8 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
      * @param server_state RTSP server state for side effects of the tcp connection
      */
     tcp_connection(boost::asio::io_context &io_context, server::rtsp_server_state &server_state)
-            : socket_(io_context), server_state_(server_state), timeout_timer_(io_context) {
+            : socket_(io_context), server_state_(server_state),
+              last_request_time_point_{std::chrono::steady_clock::now()}, timeout_timer_(io_context) {
 
     }
 
