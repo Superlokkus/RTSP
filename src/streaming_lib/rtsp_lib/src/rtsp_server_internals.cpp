@@ -21,6 +21,8 @@ rtsp::server::rtsp_server_state::rtsp_server_state(boost::asio::io_context &io_c
                                                std::placeholders::_1, std::placeholders::_2, ressource_root_,
                                                std::ref(io_context))},
                 {method{"TEARDOWN"}, &methods::teardown},
+                {method{"PLAY"},     &methods::play},
+                {method{"PAUSE"},    &methods::pause},
         } {
 }
 
@@ -44,6 +46,9 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
     } else if (request.method_or_extension == "OPTIONS") {
         body body{};
         std::tie(response, body) = options(std::make_pair(request, headers));
+    } else if (request.method_or_extension == "DESCRIBE") {
+        response.status_code = 501;
+        response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
     } else if (request.method_or_extension == "SETUP" && headers.count("session")) {
         response.status_code = 459;
         response.reason_phrase = "Aggregate Operation Not Allowed";

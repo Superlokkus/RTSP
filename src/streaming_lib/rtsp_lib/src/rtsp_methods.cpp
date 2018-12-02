@@ -206,3 +206,36 @@ std::pair<rtsp::response, rtsp::body> rtsp::methods::teardown(rtsp::rtsp_session
 
     return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
 }
+
+std::pair<rtsp::response, rtsp::body> rtsp::methods::play(rtsp_session &session, const internal_request &request) {
+    rtsp::response response{common_response_sekeleton(session, request)};
+
+    if (session.session_state() == rtsp_session::state::playing)
+        return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+    else if (session.session_state() != rtsp_session::state::ready) {
+        response.status_code = 455;
+        response.reason_phrase = "Method Not Valid in This State";
+        return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+    }
+
+    session.rtp_session->start();
+    session.set_session_state(rtsp_session::state::playing);
+
+    return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+}
+
+std::pair<rtsp::response, rtsp::body> rtsp::methods::pause(rtsp_session &session, const internal_request &request) {
+    rtsp::response response{common_response_sekeleton(session, request)};
+
+    if (session.session_state() != rtsp_session::state::playing) {
+        response.status_code = 455;
+        response.reason_phrase = "Method Not Valid in This State";
+        return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+    }
+
+    session.rtp_session->stop();
+    session.set_session_state(rtsp_session::state::ready);
+
+    return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+}
+

@@ -9,6 +9,8 @@
 
 #include <rtp_packet.hpp>
 
+#include <boost/log/trivial.hpp>
+
 rtp::unicast_jpeg_rtp_session::unicast_jpeg_rtp_session(boost::asio::ip::udp::endpoint destination,
                                                         uint16_t source_port, uint32_t ssrc,
                                                         std::unique_ptr<std::istream> jpeg_source,
@@ -20,6 +22,8 @@ rtp::unicast_jpeg_rtp_session::unicast_jpeg_rtp_session(boost::asio::ip::udp::en
         ssrc_(ssrc),
         strand_(io_context_),
         destination_(std::move(destination)) {
+    BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_session to " <<
+                             this->destination_ << " from " << this->socket_.local_endpoint();
     this->jpeg_source_->unsetf(std::ios::skipws);
 
 }
@@ -53,10 +57,14 @@ void rtp::unicast_jpeg_rtp_session::stop() {
 
 void rtp::unicast_jpeg_rtp_session::send_next_packet_handler(const boost::system::error_code &error,
                                                              frame_counter_t current_frame) {
+    BOOST_LOG_TRIVIAL(debug) << "Send next rtp packet, current frame: " << current_frame;
     if (error || current_frame >= unicast_jpeg_rtp_session::frame_absolute_count) {
+        BOOST_LOG_TRIVIAL(debug) << "Current frame " << current_frame << ">="
+                                 << unicast_jpeg_rtp_session::frame_absolute_count;
         this->running_ = false;
         return;
     }
+
 
     packet::custom_jpeg_packet packet{};
     packet.header.payload_type_field = unicast_jpeg_rtp_session::payload_type_number;
@@ -77,11 +85,12 @@ void rtp::unicast_jpeg_rtp_session::send_next_packet_handler(const boost::system
         throw std::runtime_error("Could not parse jpeg frame length");
     }
 
+    BOOST_LOG_TRIVIAL(debug) << "Frame_size " << frame_size;
     packet.data.reserve(frame_size);
-    std::istream_iterator<uint8_t> begin{*this->jpeg_source_}, end{};
-    std::copy(begin, end, std::back_inserter(packet.data));
+    std::istream_iterator<uint8_t> begin{*this->jpeg_source_};
+    std::copy_n(begin, frame_size, std::back_inserter(packet.data));
 
-    std::shared_ptr<std::vector<uint8_t>> buffer;
+    auto buffer = std::make_shared<std::vector<uint8_t>>();
     buffer->reserve(frame_size + 32u);
     rtp::packet::custom_jpeg_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
     boost::spirit::karma::generate(std::back_inserter(*buffer), gen_grammar, packet);
