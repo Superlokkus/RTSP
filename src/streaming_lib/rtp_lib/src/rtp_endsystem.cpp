@@ -41,7 +41,7 @@ void rtp::unicast_jpeg_rtp_session::start() {
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
         this->send_packet_timer_.expires_after(boost::asio::chrono::milliseconds(0));
         this->send_packet_timer_.async_wait(std::bind(&unicast_jpeg_rtp_session::send_next_packet_handler, this,
-                                                      std::placeholders::_1, 0u));
+                                                      std::placeholders::_1, 1u));
     }));
 }
 
@@ -71,7 +71,7 @@ void rtp::unicast_jpeg_rtp_session::send_next_packet_handler(const boost::system
     packet.header.ssrc = this->ssrc_;
     packet.header.marker = true;
     packet.header.sequence_number = current_frame;
-    packet.header.timestamp = current_frame * unicast_jpeg_rtp_session::frame_period;
+    packet.header.timestamp = current_frame * unicast_jpeg_rtp_session::frame_period * 90;//!<10^-3 * 10^4 = 10^1
     packet.header.image_width = 384u / 8u;
     packet.header.image_height = 288u / 8u;
 
