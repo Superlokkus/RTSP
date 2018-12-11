@@ -5,13 +5,15 @@
 #include <QtGui/QApplication>
 #include <QtGui>
 #include <QDockWidget>
+#include <QStackedWidget>
 #include <string>
 #include <iostream>
 
 #include <boost/log/trivial.hpp>
 
 
-#include <streaming_lib.hpp>
+#include "rtsp_gui/jpeg_rtsp_player.hpp"
+
 
 class rtsp_gui_widget : public QMainWindow {
 Q_OBJECT
@@ -32,7 +34,14 @@ public:
         connect(server_action, SIGNAL(triggered()), this, SLOT(show_server_page()));
         connect(client_action, SIGNAL(triggered()), this, SLOT(show_client_page()));
 
-        this->setCentralWidget(nullptr);
+        player = new rtsp_player::jpeg_player();
+        auto server = new QWidget();
+
+        central_widget = new QStackedWidget();
+        central_widget->addWidget(player);
+        central_widget->addWidget(server);
+
+        this->setCentralWidget(central_widget);
 
         if (preselection == application_mode::client)
             show_client_page();
@@ -40,13 +49,24 @@ public:
             show_server_page();
     }
 
+    void closeEvent(QCloseEvent *event) override {
+        player->deleteLater();
+    }
+
+private:
+    rtsp_player::jpeg_player *player;
+    QStackedWidget *central_widget;
+
+
 public slots:
 
     void show_server_page() {
+        this->central_widget->setCurrentIndex(1);
         BOOST_LOG_TRIVIAL(debug) << "server";
     }
 
     void show_client_page() {
+        this->central_widget->setCurrentIndex(0);
         BOOST_LOG_TRIVIAL(debug) << "client";
     }
 
@@ -74,3 +94,4 @@ int main(int argc, char *argv[]) {
 }
 
 #include "rtsp_gui.moc"
+

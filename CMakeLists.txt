@@ -35,7 +35,9 @@ find_package(Qt4 REQUIRED)
 include_directories(${Qt_INCLUDE_DIR})
 
 set(gui_source_files
-        src/rtsp_gui.cpp)
+        src/rtsp_gui.cpp
+        src/rtsp_gui/jpeg_rtsp_player.cpp
+        src/rtsp_gui/jpeg_rtsp_player.hpp)
 
 add_executable(rtsp_gui ${gui_source_files})
 
