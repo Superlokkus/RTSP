@@ -22,3 +22,4 @@ rtsp_player::jpeg_player::~jpeg_player() {
     BOOST_LOG_TRIVIAL(debug) << "To be ~destroyed";
 }
 
+#include "moc_jpeg_rtsp_player.cpp"

@@ -15,7 +15,6 @@ Q_OBJECT
 
 public:
     jpeg_player();
-
     ~jpeg_player();
 
 
@@ -23,7 +22,5 @@ public:
 
 }
 
-
-#include "jpeg_rtsp_player.moc"
 
 #endif //RTSP_JPEG_RTSP_PLAYER_HPP
