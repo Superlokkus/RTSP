@@ -6,6 +6,7 @@
 #include <QtGui>
 #include <QDockWidget>
 #include <QStackedWidget>
+#include <QStatusBar>
 #include <string>
 #include <iostream>
 
@@ -42,6 +43,13 @@ public:
         central_widget->addWidget(server);
 
         this->setCentralWidget(central_widget);
+
+        auto player_control = player->get_control_widget();
+        player_control->setAllowedAreas(Qt::RightDockWidgetArea | Qt::TopDockWidgetArea);
+        this->addDockWidget(Qt::TopDockWidgetArea, player_control);
+
+        this->setStatusBar(new QStatusBar(this));
+        player->set_status_bar(this->statusBar());
 
         if (preselection == application_mode::client)
             show_client_page();

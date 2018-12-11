@@ -5,8 +5,11 @@
 #ifndef RTSP_JPEG_RTSP_PLAYER_HPP
 #define RTSP_JPEG_RTSP_PLAYER_HPP
 
+#include <QWidget>
 #include <QDockWidget>
-#include <QImage>
+#include <QStatusBar>
+
+#include <memory>
 
 namespace rtsp_player {
 
@@ -17,7 +20,15 @@ public:
     jpeg_player();
     ~jpeg_player();
 
+    QDockWidget *get_control_widget();
 
+    void set_status_bar(QStatusBar *);
+
+private:
+    struct control_widget;
+    struct status_widget;
+    struct impl;
+    std::unique_ptr<impl> pimpl;
 };
 
 }
