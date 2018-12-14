@@ -51,6 +51,10 @@ public:
         player_control->setAllowedAreas(Qt::RightDockWidgetArea | Qt::TopDockWidgetArea);
         this->addDockWidget(Qt::TopDockWidgetArea, player_control);
 
+        auto player_settings = player->get_settings_widget();
+        player_settings->setAllowedAreas(Qt::RightDockWidgetArea | Qt::TopDockWidgetArea);
+        this->addDockWidget(Qt::RightDockWidgetArea, player_settings);
+
         if (preselection == application_mode::client)
             show_client_page();
         else if (preselection == application_mode::server)
@@ -75,6 +79,7 @@ public slots:
         this->central_widget->setCurrentIndex(1);
 
         player->get_control_widget()->setVisible(false);
+        player->get_settings_widget()->setVisible(false);
 
         BOOST_LOG_TRIVIAL(debug) << "server";
     }
@@ -83,6 +88,7 @@ public slots:
         this->central_widget->setCurrentIndex(0);
 
         player->get_control_widget()->setVisible(true);
+        player->get_settings_widget()->setVisible(true);
 
         BOOST_LOG_TRIVIAL(debug) << "client";
     }

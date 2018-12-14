@@ -7,16 +7,18 @@
 #include <QLabel>
 #include <QGridLayout>
 #include <QBoxLayout>
+#include <QFormLayout>
 #include <QImage>
 #include <QPushButton>
+#include <QLineEdit>
 
 #include <boost/log/trivial.hpp>
 #include <QtGui/QtGui>
 
 
 struct rtsp_player::jpeg_player::control_widget : QDockWidget {
-    control_widget(QWidget *parent) :
-            QDockWidget(QString::fromStdWString(L"Client Control"), parent) {
+    control_widget(jpeg_player *parent) :
+            QDockWidget(QString::fromStdWString(L"Client Control")) {
         this->setFeatures(DockWidgetFloatable | DockWidgetMovable);
         auto inside_widget = new QWidget();
         inside_widget->setLayout(new QBoxLayout(QBoxLayout::Direction::TopToBottom));
@@ -24,12 +26,24 @@ struct rtsp_player::jpeg_player::control_widget : QDockWidget {
         auto button_widget = new QWidget();
         button_widget->setLayout(new QBoxLayout(QBoxLayout::LeftToRight));
 
-        button_widget->layout()->addWidget(new QPushButton(QString::fromStdWString(L"Setup")));
-        button_widget->layout()->addWidget(new QPushButton(QString::fromStdWString(L"Play")));
-        button_widget->layout()->addWidget(new QPushButton(QString::fromStdWString(L"Pause")));
-        button_widget->layout()->addWidget(new QPushButton(QString::fromStdWString(L"Teardown")));
-        button_widget->layout()->addWidget(new QPushButton(QString::fromStdWString(L"Option")));
-
+        auto setup_button = new QPushButton(QString::fromStdWString(L"Setup"));
+        button_widget->layout()->addWidget(setup_button);
+        connect(setup_button, SIGNAL(clicked()), parent, SLOT(setup()));
+        auto play_button = new QPushButton(QString::fromStdWString(L"Play"));
+        button_widget->layout()->addWidget(play_button);
+        connect(play_button, SIGNAL(clicked()), parent, SLOT(play()));
+        auto pause_button = new QPushButton(QString::fromStdWString(L"Pause"));
+        button_widget->layout()->addWidget(pause_button);
+        connect(pause_button, SIGNAL(clicked()), parent, SLOT(pause()));
+        auto teardown_button = new QPushButton(QString::fromStdWString(L"Teardown"));
+        button_widget->layout()->addWidget(teardown_button);
+        connect(teardown_button, SIGNAL(clicked()), parent, SLOT(teardown()));
+        auto option_button = new QPushButton(QString::fromStdWString(L"Option"));
+        button_widget->layout()->addWidget(option_button);
+        connect(option_button, SIGNAL(clicked()), parent, SLOT(option()));
+        auto describe_button = new QPushButton(QString::fromStdWString(L"Describe"));
+        button_widget->layout()->addWidget(describe_button);
+        connect(describe_button, SIGNAL(clicked()), parent, SLOT(describe()));
 
         inside_widget->layout()->addWidget(button_widget);
         this->setWidget(inside_widget);
@@ -40,19 +54,36 @@ private:
 Q_OBJECT
 };
 
+struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
+    settings_widget() : QDockWidget(QString::fromStdWString(L"Client Settings")) {
+        this->setFeatures(DockWidgetFloatable | DockWidgetMovable);
+        auto inside_widget = new QWidget();
+        auto form_layout = new QFormLayout();
+        inside_widget->setLayout(form_layout);
+
+        auto host_line_edit = new QLineEdit(QString::fromStdWString(L"rtsp://localhost:5054/movie.mjpeg"));
+        host_line_edit->setMaxLength(255);
+        form_layout->addRow(tr("&Host:"), host_line_edit);
+
+        this->setWidget(inside_widget);
+    }
+
+private:
+Q_OBJECT
+};
+
 struct rtsp_player::jpeg_player::status_widget : QWidget {
-    status_widget(QWidget *parent) : QWidget(parent) {}
+    status_widget() : QWidget() {}
 
 private:
 Q_OBJECT
 };
 
 struct rtsp_player::jpeg_player::impl {
-    impl(QWidget *parent) :
-            control_widget_(parent), status_widget_(parent) {
-
-    }
+    impl(jpeg_player *parent) :
+            control_widget_(parent), settings_widget_(), status_widget_() {}
     control_widget control_widget_;
+    settings_widget settings_widget_;
     status_widget status_widget_;
 
     QStatusBar *status_bar_ = nullptr;
@@ -75,8 +106,36 @@ QDockWidget *rtsp_player::jpeg_player::get_control_widget() {
     return &this->pimpl->control_widget_;
 }
 
+QDockWidget *rtsp_player::jpeg_player::get_settings_widget() {
+    return &this->pimpl->settings_widget_;
+}
+
 void rtsp_player::jpeg_player::set_status_bar(QStatusBar *status_bar) {
     this->pimpl->status_bar_ = status_bar;
+}
+
+void rtsp_player::jpeg_player::setup() {
+    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Setup"), 1000);
+}
+
+void rtsp_player::jpeg_player::play() {
+    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Play"), 1000);
+}
+
+void rtsp_player::jpeg_player::pause() {
+    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Pause"), 1000);
+}
+
+void rtsp_player::jpeg_player::teardown() {
+    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Teardown"), 1000);
+}
+
+void rtsp_player::jpeg_player::option() {
+    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Option"), 1000);
+}
+
+void rtsp_player::jpeg_player::describe() {
+    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Describe"), 1000);
 }
 
 #include "jpeg_rtsp_player.moc"
