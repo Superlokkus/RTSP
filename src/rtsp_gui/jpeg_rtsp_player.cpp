@@ -15,8 +15,8 @@
 
 
 struct rtsp_player::jpeg_player::control_widget : QDockWidget {
-    control_widget() :
-            QDockWidget(QString::fromStdWString(L"Client Control")) {
+    control_widget(QWidget *parent) :
+            QDockWidget(QString::fromStdWString(L"Client Control"), parent) {
         this->setFeatures(DockWidgetFloatable | DockWidgetMovable);
         auto inside_widget = new QWidget();
         inside_widget->setLayout(new QBoxLayout(QBoxLayout::Direction::TopToBottom));
@@ -40,20 +40,25 @@ private:
 Q_OBJECT
 };
 
-struct rtsp_player::jpeg_player::status_widget : QStatusBar {
+struct rtsp_player::jpeg_player::status_widget : QWidget {
+    status_widget(QWidget *parent) : QWidget(parent) {}
 
 private:
 Q_OBJECT
 };
 
 struct rtsp_player::jpeg_player::impl {
+    impl(QWidget *parent) :
+            control_widget_(parent), status_widget_(parent) {
+
+    }
     control_widget control_widget_;
     status_widget status_widget_;
 
     QStatusBar *status_bar_ = nullptr;
 };
 
-rtsp_player::jpeg_player::jpeg_player() : QWidget(), pimpl(std::make_unique<impl>()) {
+rtsp_player::jpeg_player::jpeg_player() : QWidget(), pimpl(std::make_unique<impl>(this)) {
     this->setLayout(new QGridLayout(this));
     auto image = QImage{"/Users/markus/Desktop/Untitled.jpeg"};
     auto label = new QLabel(this);

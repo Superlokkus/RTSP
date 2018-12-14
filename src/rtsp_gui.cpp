@@ -44,17 +44,20 @@ public:
 
         this->setCentralWidget(central_widget);
 
+        this->setStatusBar(new QStatusBar(this));
+        player->set_status_bar(this->statusBar());
+
         auto player_control = player->get_control_widget();
         player_control->setAllowedAreas(Qt::RightDockWidgetArea | Qt::TopDockWidgetArea);
         this->addDockWidget(Qt::TopDockWidgetArea, player_control);
-
-        this->setStatusBar(new QStatusBar(this));
-        player->set_status_bar(this->statusBar());
 
         if (preselection == application_mode::client)
             show_client_page();
         else if (preselection == application_mode::server)
             show_server_page();
+        else {
+            show_client_page();
+        }
     }
 
     void closeEvent(QCloseEvent *event) override {
@@ -70,11 +73,17 @@ public slots:
 
     void show_server_page() {
         this->central_widget->setCurrentIndex(1);
+
+        player->get_control_widget()->setVisible(false);
+
         BOOST_LOG_TRIVIAL(debug) << "server";
     }
 
     void show_client_page() {
         this->central_widget->setCurrentIndex(0);
+
+        player->get_control_widget()->setVisible(true);
+
         BOOST_LOG_TRIVIAL(debug) << "client";
     }
 
