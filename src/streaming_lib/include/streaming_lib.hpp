@@ -8,6 +8,7 @@
 #include <boost/dll.hpp>
 
 #include <rtsp_server_pimpl.hpp>
+#include <rtsp_client_pimpl.hpp>
 
 #define API extern "C" BOOST_SYMBOL_EXPORT
 

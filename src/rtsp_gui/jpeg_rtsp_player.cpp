@@ -11,9 +11,11 @@
 #include <QImage>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QtGui/QtGui>
 
 #include <boost/log/trivial.hpp>
-#include <QtGui/QtGui>
+
+#include <streaming_lib.hpp>
 
 
 struct rtsp_player::jpeg_player::control_widget : QDockWidget {
@@ -62,7 +64,7 @@ struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
         inside_widget->setLayout(form_layout);
 
         auto host_line_edit = new QLineEdit(QString::fromStdWString(L"rtsp://localhost:5054/movie.mjpeg"));
-        host_line_edit->setMaxLength(255);
+        host_line_edit->setMaxLength(1024);
         form_layout->addRow(tr("&Host:"), host_line_edit);
 
         this->setWidget(inside_widget);

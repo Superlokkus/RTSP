@@ -16,6 +16,10 @@ set(${PROJECT_NAME}_implementation_files
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_headers.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_server_pimpl.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_server_pimpl.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_client_pimpl.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/rtsp_client.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_client_pimpl.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/rtsp_client.cpp
         )
 
 

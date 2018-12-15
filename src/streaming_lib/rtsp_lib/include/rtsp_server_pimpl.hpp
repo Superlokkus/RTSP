@@ -25,9 +25,6 @@ private:
     std::unique_ptr<rtsp_server> rtsp_server_;
 };
 
-struct rtsp_client final {
-    explicit rtsp_client(std::string host, uint16_t host_port, std::string video_file);
-};
 }
 
 #endif //STREAMING_LIB_HPP
