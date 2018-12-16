@@ -14,7 +14,9 @@
 namespace rtsp {
 class rtsp_client final {
 public:
-    rtsp_client(std::string url,
+    using jpeg_frame = std::vector<uint8_t>;
+
+    rtsp_client(std::string url, std::function<void(rtsp::rtsp_client::jpeg_frame)> frame_handler,
                 std::function<void(std::exception &)> error_handler = [](auto) {},
                 std::function<void(const std::string &)>
                 log_handler = [](auto) {}
@@ -22,9 +24,6 @@ public:
 
     ~rtsp_client();
 
-    using jpeg_frame = std::vector<uint8_t>;
-
-    void set_new_jpeg_frame_callback(std::function<void(jpeg_frame)> frame_handler = [](auto) {});
 
     using packet_count_t = uint32_t;
 
@@ -51,6 +50,7 @@ public:
 private:
     std::function<void(std::exception &)> error_handler_;
     std::function<void(const std::string &)> log_handler_;
+    std::function<void(jpeg_frame)> frame_handler_;
 };
 
 }

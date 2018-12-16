@@ -6,20 +6,17 @@
 
 #include <rtsp_client.hpp>
 
-rtsp::rtsp_client_pimpl::rtsp_client_pimpl(std::string url, std::function<void(std::exception &)> error_handler,
+rtsp::rtsp_client_pimpl::rtsp_client_pimpl(std::string url, std::function<void(jpeg_frame)> frame_handler,
+                                           std::function<void(std::exception &)> error_handler,
                                            std::function<void(const std::string &)> log_handler) :
         rtsp_client_(std::make_unique<rtsp_client>(
                 std::move(url),
+                std::move(frame_handler),
                 std::move(error_handler),
                 std::move(log_handler)
         )) {}
 
 rtsp::rtsp_client_pimpl::~rtsp_client_pimpl() = default;
-
-void rtsp::rtsp_client_pimpl::set_new_jpeg_frame_callback(
-        std::function<void(rtsp::rtsp_client_pimpl::jpeg_frame)> frame_handler) {
-    this->rtsp_client_->set_new_jpeg_frame_callback(std::move(frame_handler));
-}
 
 void rtsp::rtsp_client_pimpl::set_rtp_packet_stat_callbacks(
         std::function<void(packet_count_t, packet_count_t)> received_packet_handler,

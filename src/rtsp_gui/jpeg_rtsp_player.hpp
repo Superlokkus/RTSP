@@ -8,6 +8,7 @@
 #include <QWidget>
 #include <QDockWidget>
 #include <QStatusBar>
+#include <QImage>
 
 #include <memory>
 
@@ -39,17 +40,13 @@ private:
 private slots:
 
     void setup();
-
     void play();
-
     void pause();
-
     void teardown();
-
     void option();
-
     void describe();
 
+    void on_new_image(const QImage &new_image);
 };
 
 }

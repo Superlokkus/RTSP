@@ -16,15 +16,13 @@ namespace rtsp {
 class rtsp_client;
 
 struct rtsp_client_pimpl final {
-    explicit rtsp_client_pimpl(std::string url,
+    using jpeg_frame = std::vector<uint8_t>;
+
+    explicit rtsp_client_pimpl(std::string url, std::function<void(jpeg_frame)> frame_handler,
                                std::function<void(std::exception &)> error_handler = [](auto) {},
                                std::function<void(const std::string &)> log_handler = [](auto) {});
 
     ~rtsp_client_pimpl();
-
-    using jpeg_frame = std::vector<uint8_t>;
-
-    void set_new_jpeg_frame_callback(std::function<void(jpeg_frame)> frame_handler = [](auto) {});
 
     using packet_count_t = uint32_t;
 

@@ -123,14 +123,15 @@ struct rtsp_player::jpeg_player::impl {
     log_widget log_widget_;
 
     QStatusBar *status_bar_ = nullptr;
+    QLabel *central_image_label_;
 
     std::unique_ptr<rtsp::rtsp_client_pimpl> rtsp_client_;
 };
 
 rtsp_player::jpeg_player::jpeg_player() : QWidget(), pimpl(std::make_unique<impl>(this)) {
     this->setLayout(new QGridLayout(this));
-    auto image = QImage{"/Users/markus/Desktop/Untitled.jpeg"};
-    auto label = new QLabel(this);
+    auto image = QImage{400, 800, QImage::Format_Invalid};
+    auto label = this->pimpl->central_image_label_ = new QLabel(this);
     this->layout()->addWidget(label);
     label->setPixmap(QPixmap::fromImage(image));
 
@@ -161,6 +162,12 @@ void rtsp_player::jpeg_player::setup() {
     this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Setup"), 1000);
     this->pimpl->rtsp_client_ = std::make_unique<rtsp::rtsp_client_pimpl>(
             this->pimpl->settings_widget_.get_current_url(),
+            [this](auto frame) {
+                QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
+                        this, "on_new_image", Qt::QueuedConnection,
+                        Q_ARG(QImage, QImage::fromData(frame.data(), frame.size()))
+                );
+            },
             [this](auto exception) {
                 QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
                         this->get_log_widget(), "add_error_log", Qt::QueuedConnection,
@@ -180,6 +187,10 @@ void rtsp_player::jpeg_player::setup() {
                 );
             }
     );
+}
+
+void rtsp_player::jpeg_player::on_new_image(const QImage &new_image) {
+    this->pimpl->central_image_label_->setPixmap(QPixmap::fromImage(new_image));
 }
 
 void rtsp_player::jpeg_player::play() {
