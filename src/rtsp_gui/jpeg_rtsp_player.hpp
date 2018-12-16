@@ -24,12 +24,15 @@ public:
 
     QDockWidget *get_settings_widget();
 
+    QDockWidget *get_log_widget();
+
     void set_status_bar(QStatusBar *);
 
 private:
     struct control_widget;
     struct settings_widget;
     struct status_widget;
+    struct log_widget;
     struct impl;
     std::unique_ptr<impl> pimpl;
 

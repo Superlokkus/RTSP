@@ -7,7 +7,7 @@
 #include <rtsp_client.hpp>
 
 rtsp::rtsp_client_pimpl::rtsp_client_pimpl(std::string url, std::function<void(std::exception &)> error_handler,
-                                           std::function<void()> log_handler) :
+                                           std::function<void(const std::string &)> log_handler) :
         rtsp_client_(std::make_unique<rtsp_client>(
                 std::move(url),
                 std::move(error_handler),

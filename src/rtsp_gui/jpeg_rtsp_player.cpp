@@ -12,6 +12,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QtGui/QtGui>
+#include <QTextEdit>
 
 #include <boost/log/trivial.hpp>
 
@@ -63,15 +64,46 @@ struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
         auto form_layout = new QFormLayout();
         inside_widget->setLayout(form_layout);
 
-        auto host_line_edit = new QLineEdit(QString::fromStdWString(L"rtsp://localhost:5054/movie.mjpeg"));
+        host_line_edit = new QLineEdit(QString::fromStdWString(L"rtsp://localhost:5054/movie.mjpeg"));
         host_line_edit->setMaxLength(1024);
         form_layout->addRow(tr("&Host:"), host_line_edit);
 
         this->setWidget(inside_widget);
     }
 
+    std::string get_current_url() const {
+        return this->host_line_edit->text().toStdString();
+    }
+
 private:
 Q_OBJECT
+
+    QLineEdit *host_line_edit = nullptr;
+};
+
+struct rtsp_player::jpeg_player::log_widget : QDockWidget {
+    log_widget() : QDockWidget(QString::fromStdWString(L"Client Log")) {
+        this->setFeatures(DockWidgetFloatable | DockWidgetMovable);
+        text_widget_ = new QTextEdit();
+        text_widget_->setReadOnly(true);
+
+        this->setWidget(text_widget_);
+    }
+
+public slots:
+
+    void add_log(const QString &log) {
+        this->text_widget_->append(log);
+    };
+
+    void add_error_log(const QString &log) {
+        this->text_widget_->append(log);
+    };
+
+private:
+Q_OBJECT
+
+    QTextEdit *text_widget_;
 };
 
 struct rtsp_player::jpeg_player::status_widget : QWidget {
@@ -83,12 +115,16 @@ Q_OBJECT
 
 struct rtsp_player::jpeg_player::impl {
     impl(jpeg_player *parent) :
-            control_widget_(parent), settings_widget_(), status_widget_() {}
+            control_widget_(parent), settings_widget_(), status_widget_(), log_widget_() {}
+
     control_widget control_widget_;
     settings_widget settings_widget_;
     status_widget status_widget_;
+    log_widget log_widget_;
 
     QStatusBar *status_bar_ = nullptr;
+
+    std::unique_ptr<rtsp::rtsp_client_pimpl> rtsp_client_;
 };
 
 rtsp_player::jpeg_player::jpeg_player() : QWidget(), pimpl(std::make_unique<impl>(this)) {
@@ -101,6 +137,7 @@ rtsp_player::jpeg_player::jpeg_player() : QWidget(), pimpl(std::make_unique<impl
 }
 
 rtsp_player::jpeg_player::~jpeg_player() {
+    this->pimpl->rtsp_client_.reset();
     BOOST_LOG_TRIVIAL(debug) << "To be ~destroyed";
 }
 
@@ -112,12 +149,31 @@ QDockWidget *rtsp_player::jpeg_player::get_settings_widget() {
     return &this->pimpl->settings_widget_;
 }
 
+QDockWidget *rtsp_player::jpeg_player::get_log_widget() {
+    return &this->pimpl->log_widget_;
+}
+
 void rtsp_player::jpeg_player::set_status_bar(QStatusBar *status_bar) {
     this->pimpl->status_bar_ = status_bar;
 }
 
 void rtsp_player::jpeg_player::setup() {
     this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Setup"), 1000);
+    this->pimpl->rtsp_client_ = std::make_unique<rtsp::rtsp_client_pimpl>(
+            this->pimpl->settings_widget_.get_current_url(),
+            [this](auto exception) {
+                QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
+                        this->get_log_widget(), "add_error_log", Qt::QueuedConnection,
+                        Q_ARG(QString, QString{exception.what()})
+                );
+            },
+            [this](auto log) {
+                QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
+                        this->get_log_widget(), "add_log", Qt::QueuedConnection,
+                        Q_ARG(QString, QString::fromStdString(log))
+                );
+            }
+    );
 }
 
 void rtsp_player::jpeg_player::play() {

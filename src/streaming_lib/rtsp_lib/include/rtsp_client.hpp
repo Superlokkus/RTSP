@@ -16,8 +16,8 @@ class rtsp_client final {
 public:
     rtsp_client(std::string url,
                 std::function<void(std::exception &)> error_handler = [](auto) {},
-                std::function<void()>
-                log_handler = []() {}
+                std::function<void(const std::string &)>
+                log_handler = [](auto) {}
     );
 
     ~rtsp_client();
@@ -45,6 +45,8 @@ public:
     void teardown();
 
 private:
+    std::function<void(std::exception &)> error_handler_;
+    std::function<void(const std::string &)> log_handler_;
 };
 
 }

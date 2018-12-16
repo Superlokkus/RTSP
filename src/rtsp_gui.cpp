@@ -55,6 +55,10 @@ public:
         player_settings->setAllowedAreas(Qt::RightDockWidgetArea | Qt::TopDockWidgetArea);
         this->addDockWidget(Qt::RightDockWidgetArea, player_settings);
 
+        auto client_logs = player->get_log_widget();
+        client_logs->setAllowedAreas(Qt::RightDockWidgetArea | Qt::TopDockWidgetArea | Qt::LeftDockWidgetArea);
+        this->addDockWidget(Qt::LeftDockWidgetArea, client_logs);
+
         if (preselection == application_mode::client)
             show_client_page();
         else if (preselection == application_mode::server)

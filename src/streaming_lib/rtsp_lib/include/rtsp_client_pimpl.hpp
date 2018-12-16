@@ -18,7 +18,7 @@ class rtsp_client;
 struct rtsp_client_pimpl final {
     explicit rtsp_client_pimpl(std::string url,
                                std::function<void(std::exception &)> error_handler = [](auto) {},
-                               std::function<void()> log_handler = []() {});
+                               std::function<void(const std::string &)> log_handler = [](auto) {});
 
     ~rtsp_client_pimpl();
 
