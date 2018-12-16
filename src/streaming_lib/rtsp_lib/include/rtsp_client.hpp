@@ -44,6 +44,10 @@ public:
 
     void teardown();
 
+    void option();
+
+    void describe();
+
 private:
     std::function<void(std::exception &)> error_handler_;
     std::function<void(const std::string &)> log_handler_;

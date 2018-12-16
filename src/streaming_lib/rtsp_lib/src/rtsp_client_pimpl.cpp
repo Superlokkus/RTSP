@@ -43,3 +43,11 @@ void rtsp::rtsp_client_pimpl::pause() {
 void rtsp::rtsp_client_pimpl::teardown() {
     this->rtsp_client_->teardown();
 }
+
+void rtsp::rtsp_client_pimpl::option() {
+    this->rtsp_client_->option();
+}
+
+void rtsp::rtsp_client_pimpl::describe() {
+    this->rtsp_client_->describe();
+}

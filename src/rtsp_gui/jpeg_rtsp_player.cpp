@@ -166,6 +166,12 @@ void rtsp_player::jpeg_player::setup() {
                         this->get_log_widget(), "add_error_log", Qt::QueuedConnection,
                         Q_ARG(QString, QString{exception.what()})
                 );
+                QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
+                        this->pimpl->status_bar_,
+                        "showMessage",
+                        Q_ARG(QString, QString{exception.what()}),
+                        Q_ARG(int, 3000)
+                );
             },
             [this](auto log) {
                 QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
@@ -177,23 +183,23 @@ void rtsp_player::jpeg_player::setup() {
 }
 
 void rtsp_player::jpeg_player::play() {
-    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Play"), 1000);
+    this->pimpl->rtsp_client_->play();
 }
 
 void rtsp_player::jpeg_player::pause() {
-    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Pause"), 1000);
+    this->pimpl->rtsp_client_->pause();
 }
 
 void rtsp_player::jpeg_player::teardown() {
-    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Teardown"), 1000);
+    this->pimpl->rtsp_client_->teardown();
 }
 
 void rtsp_player::jpeg_player::option() {
-    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Option"), 1000);
+    this->pimpl->rtsp_client_->option();
 }
 
 void rtsp_player::jpeg_player::describe() {
-    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Describe"), 1000);
+    this->pimpl->rtsp_client_->describe();
 }
 
 #include "jpeg_rtsp_player.moc"

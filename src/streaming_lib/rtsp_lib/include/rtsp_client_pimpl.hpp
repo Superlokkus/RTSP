@@ -45,6 +45,10 @@ struct rtsp_client_pimpl final {
 
     void teardown();
 
+    void option();
+
+    void describe();
+
 
 private:
     std::unique_ptr<rtsp_client> rtsp_client_;

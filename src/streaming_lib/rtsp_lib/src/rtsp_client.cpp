@@ -40,3 +40,11 @@ void rtsp::rtsp_client::pause() {
 void rtsp::rtsp_client::teardown() {
 
 }
+
+void rtsp::rtsp_client::option() {
+
+}
+
+void rtsp::rtsp_client::describe() {
+
+}
