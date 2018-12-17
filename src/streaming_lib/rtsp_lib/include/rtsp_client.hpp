@@ -10,6 +10,7 @@
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <thread>
 
 #include <boost/asio.hpp>
 
@@ -53,6 +54,22 @@ private:
     std::function<void(std::exception &)> error_handler_;
     std::function<void(const std::string &)> log_handler_;
     std::function<void(jpeg_frame)> frame_handler_;
+
+    boost::asio::io_context io_context_;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
+    std::vector<std::thread> io_run_threads_;
+
+    struct {
+        std::string host;
+        std::string remainder;
+        uint16_t port{};
+    } rtsp_settings_;
+
+
+    void process_url(const std::string &url);
+
+    static void
+    io_run_loop(boost::asio::io_context &context, const std::function<void(std::exception &)> &error_handler);
 };
 
 }

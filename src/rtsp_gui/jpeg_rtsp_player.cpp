@@ -13,6 +13,7 @@
 #include <QLineEdit>
 #include <QtGui/QtGui>
 #include <QTextEdit>
+#include <QErrorMessage>
 
 #include <boost/log/trivial.hpp>
 
@@ -158,36 +159,45 @@ void rtsp_player::jpeg_player::set_status_bar(QStatusBar *status_bar) {
     this->pimpl->status_bar_ = status_bar;
 }
 
+void rtsp_player::jpeg_player::create_new_rtsp_client_() {
+    try {
+        this->pimpl->rtsp_client_ = std::make_unique<rtsp::rtsp_client_pimpl>(
+                this->pimpl->settings_widget_.get_current_url(),
+                [this](auto frame) {
+                    QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
+                            this, "on_new_image", Qt::QueuedConnection,
+                            Q_ARG(QImage, QImage::fromData(frame.data(), frame.size()))
+                    );
+                },
+                [this](auto exception) {
+                    QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
+                            this->get_log_widget(), "add_error_log", Qt::QueuedConnection,
+                            Q_ARG(QString, QString{exception.what()})
+                    );
+                    QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
+                            this->pimpl->status_bar_,
+                            "showMessage",
+                            Qt::QueuedConnection,
+                            Q_ARG(QString, QString{exception.what()}),
+                            Q_ARG(int, 3000)
+                    );
+                },
+                [this](auto log) {
+                    QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
+                            this->get_log_widget(), "add_log", Qt::QueuedConnection,
+                            Q_ARG(QString, QString::fromStdString(log))
+                    );
+                }
+        );
+    } catch (std::exception &e) {
+        auto error_message = new QErrorMessage(this);
+        error_message->showMessage(QString{e.what()}, "setup failure");
+    }
+}
+
 void rtsp_player::jpeg_player::setup() {
-    this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Setup"), 1000);
-    this->pimpl->rtsp_client_ = std::make_unique<rtsp::rtsp_client_pimpl>(
-            this->pimpl->settings_widget_.get_current_url(),
-            [this](auto frame) {
-                QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
-                        this, "on_new_image", Qt::QueuedConnection,
-                        Q_ARG(QImage, QImage::fromData(frame.data(), frame.size()))
-                );
-            },
-            [this](auto exception) {
-                QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
-                        this->get_log_widget(), "add_error_log", Qt::QueuedConnection,
-                        Q_ARG(QString, QString{exception.what()})
-                );
-                QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
-                        this->pimpl->status_bar_,
-                        "showMessage",
-                        Qt::QueuedConnection,
-                        Q_ARG(QString, QString{exception.what()}),
-                        Q_ARG(int, 3000)
-                );
-            },
-            [this](auto log) {
-                QMetaObject::invokeMethod(//Could be UB see https://stackoverflow.com/q/53803018/3537677
-                        this->get_log_widget(), "add_log", Qt::QueuedConnection,
-                        Q_ARG(QString, QString::fromStdString(log))
-                );
-            }
-    );
+    this->create_new_rtsp_client_();
+    this->pimpl->rtsp_client_->setup();
 }
 
 void rtsp_player::jpeg_player::on_new_image(const QImage &new_image) {
@@ -195,22 +205,35 @@ void rtsp_player::jpeg_player::on_new_image(const QImage &new_image) {
 }
 
 void rtsp_player::jpeg_player::play() {
+    if (!this->pimpl->rtsp_client_) {
+        this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Can not play before setup"), 1000);
+        return;
+    }
     this->pimpl->rtsp_client_->play();
 }
 
 void rtsp_player::jpeg_player::pause() {
+    if (!this->pimpl->rtsp_client_) {
+        this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Can not pause before setup"), 1000);
+        return;
+    }
     this->pimpl->rtsp_client_->pause();
 }
 
 void rtsp_player::jpeg_player::teardown() {
-    this->pimpl->rtsp_client_->teardown();
+    if (pimpl->rtsp_client_)
+        this->pimpl->rtsp_client_->teardown();
+    else
+        this->pimpl->status_bar_->showMessage(QString::fromStdWString(L"Can not teardown before setup"), 1000);
 }
 
 void rtsp_player::jpeg_player::option() {
+    this->create_new_rtsp_client_();
     this->pimpl->rtsp_client_->option();
 }
 
 void rtsp_player::jpeg_player::describe() {
+    this->create_new_rtsp_client_();
     this->pimpl->rtsp_client_->describe();
 }
 

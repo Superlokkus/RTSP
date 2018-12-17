@@ -47,6 +47,8 @@ private slots:
     void describe();
 
     void on_new_image(const QImage &new_image);
+
+    void create_new_rtsp_client_();
 };
 
 }
