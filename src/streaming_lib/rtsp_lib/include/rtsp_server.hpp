@@ -15,8 +15,8 @@
 
 #include <boost/asio.hpp>
 
-#include "rtsp_message.hpp"
-#include "rtsp_server_internals.hpp"
+#include <rtsp_message.hpp>
+#include <rtsp_server_internals.hpp>
 
 namespace rtsp {
 

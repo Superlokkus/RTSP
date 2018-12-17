@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <string>
 
+#include <boost/asio.hpp>
+
 namespace rtsp {
 class rtsp_client final {
 public:

@@ -176,6 +176,7 @@ void rtsp_player::jpeg_player::setup() {
                 QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
                         this->pimpl->status_bar_,
                         "showMessage",
+                        Qt::QueuedConnection,
                         Q_ARG(QString, QString{exception.what()}),
                         Q_ARG(int, 3000)
                 );
