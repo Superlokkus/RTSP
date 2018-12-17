@@ -1,4 +1,4 @@
-#include "../include/rtsp_server_internals.hpp"
+#include <rtsp_server_internals.hpp>
 
 #include <cctype>
 #include <tuple>
@@ -9,7 +9,6 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/log/trivial.hpp>
-#include <rtsp_server_internals.hpp>
 
 
 rtsp::server::rtsp_server_state::rtsp_server_state(boost::asio::io_context &io_context,
@@ -53,10 +52,10 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
         response.status_code = 459;
         response.reason_phrase = "Aggregate Operation Not Allowed";
     } else if (request.method_or_extension == "SETUP") {
-        rtsp_session new_session{};
+        rtsp_server_session new_session{};
         auto identifier = new_session.identifier();
         std::lock_guard<std::mutex> lock{this->sessions_mutex_};
-        rtsp_session &inserted_session = this->sessions_.emplace
+        rtsp_server_session &inserted_session = this->sessions_.emplace
                 (std::move(identifier), std::move(new_session)).first->second;
         inserted_session.last_seen_request_address = requester;
         this->sessions__by_host_.emplace(requester, inserted_session.identifier());
@@ -122,7 +121,8 @@ void rtsp::server::rtsp_server_state::handle_timeout_of_host(const boost::asio::
     }
 }
 
-void rtsp::server::rtsp_server_state::delete_session(std::unordered_map<rtsp::session_identifier, rtsp::rtsp_session>
+void
+rtsp::server::rtsp_server_state::delete_session(std::unordered_map<rtsp::session_identifier, rtsp::rtsp_server_session>
                                                      ::iterator &session_it) {
     this->sessions_.erase(session_it);
 }
