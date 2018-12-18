@@ -14,6 +14,8 @@
 
 #include <boost/asio.hpp>
 
+#include <rtsp_session.hpp>
+
 namespace rtsp {
 class rtsp_client final {
 public:
@@ -58,18 +60,36 @@ private:
     boost::asio::io_context io_context_;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
     std::vector<std::thread> io_run_threads_;
+    boost::asio::io_context::strand strand_;
+
+    boost::asio::ip::tcp::socket rtsp_socket_;
+    boost::asio::ip::tcp::resolver rtsp_resolver_;
 
     struct {
         std::string host;
         std::string remainder;
         uint16_t port{};
+        std::string original_url;
     } rtsp_settings_;
 
+    rtsp_client_session session_;
 
+    /*! For use in the constructor, unsychronized
+     *
+     * @param url
+     */
     void process_url(const std::string &url);
 
     static void
     io_run_loop(boost::asio::io_context &context, const std::function<void(std::exception &)> &error_handler);
+
+
+    /*! For use in already synchronized methods, unsychronized
+     * @todo Currently just returns the first resolved entry, complex search working rtsp option probed entry logic
+     * could improve robustness
+     */
+    template<typename callback>
+    void open_socket(callback &&then);
 };
 
 }

@@ -19,30 +19,22 @@ rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_cl
         error_handler_(std::move(error_handler)),
         log_handler_(std::move(log_handler)),
         io_context_{BOOST_ASIO_CONCURRENCY_HINT_SAFE},
-        work_guard_{boost::asio::make_work_guard(io_context_)} {
+        work_guard_{boost::asio::make_work_guard(io_context_)},
+        strand_(io_context_),
+        rtsp_socket_(io_context_),
+        rtsp_resolver_(io_context_) {
     this->log_handler_(std::string{"rtsp_client creating for URL: "} + url);
     const auto thread_count{std::max<unsigned>(std::thread::hardware_concurrency(), 1)};
+    this->process_url(url);
+    std::generate_n(std::back_inserter(this->io_run_threads_),
+                    thread_count,
+                    [this]() {
+                        return std::thread{&rtsp_client::io_run_loop,
+                                           std::ref(this->io_context_), std::ref(this->error_handler_)};
+                    });
 
-    try {
-        std::generate_n(std::back_inserter(this->io_run_threads_),
-                        thread_count,
-                        [this]() {
-                            return std::thread{&rtsp_client::io_run_loop,
-                                               std::ref(this->io_context_), std::ref(this->error_handler_)};
-                        });
-        this->process_url(url);
-        this->log_handler_(std::string{"rtsp_client created with"} + this->rtsp_settings_.host +
-                           +":" + std::to_string(this->rtsp_settings_.port) + this->rtsp_settings_.remainder);
-    } catch (...) {
-        work_guard_.reset();
-        io_context_.stop();
-        std::for_each(this->io_run_threads_.begin(), this->io_run_threads_.end(), [](auto &thread) {
-            if (thread.joinable()) thread.join();
-
-        });
-        throw;
-    }
-
+    this->log_handler_(std::string{"rtsp_client created with"} + this->rtsp_settings_.host +
+                       +":" + std::to_string(this->rtsp_settings_.port) + this->rtsp_settings_.remainder);
 }
 
 rtsp::rtsp_client::~rtsp_client() {
@@ -95,11 +87,61 @@ void rtsp::rtsp_client::process_url(const std::string &url) {
     this->rtsp_settings_.host = host;
     this->rtsp_settings_.port = port.value_or(554u);
     this->rtsp_settings_.remainder = remainder;
+    this->rtsp_settings_.original_url = url;
+}
 
+template <typename callback>
+void rtsp::rtsp_client::open_socket(callback&& then) {
+    this->rtsp_resolver_.async_resolve(this->rtsp_settings_.host,std::to_string(this->rtsp_settings_.port),
+            boost::asio::bind_executor(this->strand_,
+            [this,then] (auto error, auto results) {
+        if (error)
+            throw std::runtime_error{error.message()};
+
+        std::stringstream log;
+        log << "Resolved " << this->rtsp_settings_.host << " Port " << this->rtsp_settings_.port << "\n";
+        for (const auto& entry : results) {
+            log << "Found entry \"" << entry.endpoint() << "\"";
+        }
+        log << "\n" << "Simple resolve logic: try to use first entry: ";
+
+        auto first_entry = results.cbegin();
+        if (first_entry == results.cend()){
+            throw std::runtime_error{std::string{"Could not resolve host: "} + this->rtsp_settings_.original_url};
+        }
+
+        log << first_entry->endpoint() << "\"\n Connecting...\n";
+
+        this->log_handler_(log.str());
+
+        this->rtsp_socket_.async_connect(first_entry->endpoint(), boost::asio::bind_executor(this->strand_,
+                [then] (auto error) {
+            if (error)
+                throw std::runtime_error{std::string{"Could not connect: "} + error.message()};
+            then();
+        }));
+
+    }));
 }
 
 void rtsp::rtsp_client::setup() {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
 
+        auto send_setup_request = [this]() {
+            rtsp::request request{"SETUP", this->rtsp_settings_.original_url, 1, 0,
+                                  {
+                                          {"CSeq", std::to_string(this->session_.next_cseq++)}
+                                          //Cursor insert transport header
+                                  }};
+
+        };
+
+        if (!this->rtsp_socket_.is_open()) {
+            this->open_socket(send_setup_request);
+        } else {
+            send_setup_request();
+        }
+    }));
 }
 
 void rtsp::rtsp_client::play() {

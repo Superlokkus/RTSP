@@ -66,6 +66,10 @@ struct rtsp_server_session final : public rtsp_session<rtsp_server_session> {
 
     };
 
+struct rtsp_client_session final : public rtsp_session<rtsp_client_session> {
+    uint_fast32_t next_cseq{0u};
+};
+
 }
 
 namespace std {

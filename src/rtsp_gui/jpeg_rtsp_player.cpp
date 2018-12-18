@@ -169,7 +169,7 @@ void rtsp_player::jpeg_player::create_new_rtsp_client_() {
                             Q_ARG(QImage, QImage::fromData(frame.data(), frame.size()))
                     );
                 },
-                [this](auto exception) {
+                [this](auto &exception) {
                     QMetaObject::invokeMethod( //Could be UB see https://stackoverflow.com/q/53803018/3537677
                             this->get_log_widget(), "add_error_log", Qt::QueuedConnection,
                             Q_ARG(QString, QString{exception.what()})
