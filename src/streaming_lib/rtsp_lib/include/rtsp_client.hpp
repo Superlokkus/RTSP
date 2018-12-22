@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <string>
 #include <thread>
+#include <random>
 
 #include <boost/asio.hpp>
 
@@ -57,6 +58,7 @@ private:
     std::function<void(const std::string &)> log_handler_;
     std::function<void(jpeg_frame)> frame_handler_;
 
+    std::default_random_engine default_random_engine_;
     boost::asio::io_context io_context_;
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard_;
     std::vector<std::thread> io_run_threads_;
@@ -87,6 +89,7 @@ private:
     /*! For use in already synchronized methods, unsychronized
      * @todo Currently just returns the first resolved entry, complex search working rtsp option probed entry logic
      * could improve robustness
+     * @param then Will be called after socket has been connected, sychronized with strand
      */
     template<typename callback>
     void open_socket(callback &&then);

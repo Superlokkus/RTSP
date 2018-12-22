@@ -10,11 +10,13 @@
 #include <boost/optional.hpp>
 
 #include <rtsp_message.hpp>
+#include <rtsp_headers.hpp>
 
 rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_client::jpeg_frame)> frame_handler,
                                std::function<void(std::exception &)> error_handler,
                                std::function<void(const std::string &)> log_handler)
         :
+        default_random_engine_(std::random_device()()),
         frame_handler_(std::move(frame_handler)),
         error_handler_(std::move(error_handler)),
         log_handler_(std::move(log_handler)),
@@ -24,6 +26,9 @@ rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_cl
         rtsp_socket_(io_context_),
         rtsp_resolver_(io_context_) {
     this->log_handler_(std::string{"rtsp_client creating for URL: "} + url);
+
+    std::uniform_int_distribution<int> uniform_dist(1, 6);
+
     const auto thread_count{std::max<unsigned>(std::thread::hardware_concurrency(), 1)};
     this->process_url(url);
     std::generate_n(std::back_inserter(this->io_run_threads_),
@@ -126,14 +131,30 @@ void rtsp::rtsp_client::open_socket(callback&& then) {
 
 void rtsp::rtsp_client::setup() {
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
-
         auto send_setup_request = [this]() {
+            std::uniform_int_distribution<headers::transport::transport_spec::port_number>
+                    port_distribution(49152u, 65525u);
+            const auto chosen_rtp_port_by_me{port_distribution(this->default_random_engine_)};
+
+            headers::transport my_transport{std::vector<headers::transport::transport_spec>{
+                    headers::transport::transport_spec{"RTP", "AVP", boost::make_optional<rtsp::string>("UDP")}}};
+            headers::transport::transport_spec::port my_port{
+                    headers::transport::transport_spec::port::port_type::client,
+                    headers::transport::transport_spec::port_number{chosen_rtp_port_by_me}};
+            my_transport.specifications.at(0).parameters.emplace_back(std::move(my_port));
+
+            std::string transport_string{};
+            rtsp::headers::generate_transport_header_grammar<std::back_insert_iterator<std::string>> gen_grammar{};
+            bool success = boost::spirit::karma::generate(std::back_inserter(transport_string), gen_grammar, my_transport);
+            if (!success)
+                throw std::logic_error{"Could not generate rtsp transport string"};
+
             rtsp::request request{"SETUP", this->rtsp_settings_.original_url, 1, 0,
                                   {
-                                          {"CSeq", std::to_string(this->session_.next_cseq++)}
-                                          //Cursor insert transport header
+                                          {"CSeq", std::to_string(this->session_.next_cseq++)},
+                                          {"Transport", std::move(transport_string)}
                                   }};
-
+//Cursor Actually send it
         };
 
         if (!this->rtsp_socket_.is_open()) {
