@@ -16,8 +16,10 @@
 #include <boost/asio.hpp>
 
 #include <rtsp_session.hpp>
+#include <rtsp_definitions.hpp>
 
 namespace rtsp {
+
 class rtsp_client final {
 public:
     using jpeg_frame = std::vector<uint8_t>;
@@ -75,6 +77,7 @@ private:
     } rtsp_settings_;
 
     rtsp_client_session session_;
+    std::unordered_map<rtsp::cseq, std::function<void(rtsp::response)>> outstanding_requests_;
 
     /*! For use in the constructor, unsychronized
      *
@@ -93,6 +96,13 @@ private:
      */
     template<typename callback>
     void open_socket(callback &&then);
+
+    /*! For use in already synchronized methods, unsychronized
+     * @param request Request to send, cseq ist required
+     * @param response_callback Will be called when a non 1xx response to the request was received, already
+     * sychronized with strand
+     */
+    void send_request(rtsp::request request, std::function<void(rtsp::response)> reponse_handler);
 };
 
 }

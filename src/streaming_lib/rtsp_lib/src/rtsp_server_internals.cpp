@@ -65,27 +65,20 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
         response.status_code = 400;
         response.reason_phrase = "Session header not found";
     } else if (this->methods_.count(request.method_or_extension)) {
-        session_identifier session_id{};
-        auto converted = boost::conversion::try_lexical_convert<boost::uuids::uuid &, const std::string &>
-                (headers.at("session"), session_id);
-        if (!converted || session_id.is_nil()) {
+        std::lock_guard<std::mutex> lock{this->sessions_mutex_};
+        auto session_it = this->sessions_.find(headers.at("session"));
+        if (session_it == this->sessions_.end()) {
             response.status_code = 454;
-            response.reason_phrase = "Session-id malformend";
+            response.reason_phrase = "Session not found";
         } else {
-            std::lock_guard<std::mutex> lock{this->sessions_mutex_};
-            auto session_it = this->sessions_.find(session_id);
-            if (session_it == this->sessions_.end()) {
-                response.status_code = 454;
-                response.reason_phrase = "Session not found";
-            } else {
-                session_it->second.last_seen_request_address = requester;
-                response = this->methods_.at(request.method_or_extension)(session_it->second,
-                                                                          std::make_pair(request, headers)).first;
-                if (request.method_or_extension == "TEARDOWN") {
-                    this->delete_session(session_it);
-                }
+            session_it->second.last_seen_request_address = requester;
+            response = this->methods_.at(request.method_or_extension)(session_it->second,
+                                                                      std::make_pair(request, headers)).first;
+            if (request.method_or_extension == "TEARDOWN") {
+                this->delete_session(session_it);
             }
         }
+
     } else if (!this->methods_.count(request.method_or_extension)) {
         response.status_code = 501;
         response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
@@ -122,7 +115,7 @@ void rtsp::server::rtsp_server_state::handle_timeout_of_host(const boost::asio::
 }
 
 void
-rtsp::server::rtsp_server_state::delete_session(std::unordered_map<rtsp::session_identifier, rtsp::rtsp_server_session>
-                                                     ::iterator &session_it) {
+rtsp::server::rtsp_server_state::delete_session(std::unordered_map<rtsp::string, rtsp::rtsp_server_session>
+                                                ::iterator &session_it) {
     this->sessions_.erase(session_it);
 }

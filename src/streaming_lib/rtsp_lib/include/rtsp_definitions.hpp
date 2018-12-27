@@ -27,6 +27,8 @@ using request_uri = string;
 using header = std::pair<string, string>;
 using raw_headers = std::vector<header>;
 
+using cseq = uint32_t;
+
 using normalized_headers = std::unordered_map<rtsp::header::first_type, rtsp::header::second_type>;
 using body = string;
 

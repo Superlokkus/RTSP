@@ -10,12 +10,12 @@
 #include <boost/asio.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 #include <rtp_endsystem.hpp>
+#include <rtsp_definitions.hpp>
 
 namespace rtsp {
-
-using session_identifier = boost::uuids::uuid;
 
 template<typename T>
 struct rtsp_session {
@@ -33,17 +33,12 @@ struct rtsp_session {
      * @param start_state State the session begins with
      */
     rtsp_session(state start_state) : state_(start_state) {
-            if (state_ != state::init || state_ != state::ready)
-                throw std::runtime_error("Invalid start state");
+        if (state_ != state::init || state_ != state::ready)
+            throw std::runtime_error("Invalid start state");
     }
 
-    static session_identifier make_new_session_identifier() {
-        thread_local boost::uuids::random_generator uuid_gen{};
-        return uuid_gen();
-    }
-
-    session_identifier identifier() const noexcept {
-        return this->session_identifier_;
+    string identifier() const noexcept {
+        return static_cast<const T *>(this)->identifier_();
     }
 
     state session_state() const noexcept {
@@ -54,32 +49,57 @@ struct rtsp_session {
         this->state_ = new_state;
     }
 
-private:
+protected:
     state state_{state::init};
-    rtsp::session_identifier session_identifier_{make_new_session_identifier()};
 };
 
 struct rtsp_server_session final : public rtsp_session<rtsp_server_session> {
+    friend class rtsp_session<rtsp_server_session>;
 
-        std::unique_ptr<rtp::unicast_jpeg_rtp_session> rtp_session{};
-        boost::asio::ip::address last_seen_request_address{};
+    std::unique_ptr<rtp::unicast_jpeg_rtp_session> rtp_session{};
+    boost::asio::ip::address last_seen_request_address{};
 
-    };
+private:
+    boost::uuids::uuid session_identifier_{make_new_session_identifier_()};
+
+    string identifier_() const noexcept {
+        return boost::uuids::to_string(this->session_identifier_);
+    }
+
+    static boost::uuids::uuid make_new_session_identifier_() {
+        thread_local boost::uuids::random_generator uuid_gen{};
+        return uuid_gen();
+    }
+
+};
 
 struct rtsp_client_session final : public rtsp_session<rtsp_client_session> {
+    friend class rtsp_session<rtsp_client_session>;
+
+    void set_identifier(string new_identifier) {
+        this->session_identifier_ = std::move(new_identifier);
+    }
+
     uint_fast32_t next_cseq{0u};
+
+private:
+    string session_identifier_;
+
+    string identifier_() const noexcept {
+        return this->session_identifier_;
+    }
 };
 
 }
 
 namespace std {
 template<>
-struct hash<rtsp::session_identifier> {
-    typedef rtsp::session_identifier argument_type;
-    typedef std::size_t result_type;
+struct hash<rtsp::rtsp_server_session> {
+    typedef rtsp::rtsp_server_session argument_type;
+    typedef std::string result_type;
 
     result_type operator()(argument_type const &session_identifier) const noexcept {
-        return boost::uuids::hash_value(session_identifier);
+        return session_identifier.identifier();
     }
 };
 }

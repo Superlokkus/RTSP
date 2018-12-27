@@ -55,15 +55,15 @@ public:
 private:
     fileapi::path ressource_root_;
     std::mutex sessions_mutex_;
-    std::unordered_map<rtsp::session_identifier, rtsp::rtsp_server_session> sessions_;
-    std::multimap<boost::asio::ip::address, rtsp::session_identifier> sessions__by_host_;
+    std::unordered_map<rtsp::string, rtsp::rtsp_server_session> sessions_;
+    std::multimap<boost::asio::ip::address, rtsp::string> sessions__by_host_;
     std::unordered_map<rtsp::method, method_implementation> methods_;
 
     /*!
      * @warning sessions_mutex_ must be held when calling this method
      * @param session_it Session to be deleted, will be invalid after call, must be valid before call
      */
-    void delete_session(std::unordered_map<rtsp::session_identifier, rtsp::rtsp_server_session>::iterator &session_it);
+    void delete_session(std::unordered_map<rtsp::string, rtsp::rtsp_server_session>::iterator &session_it);
 };
 
 }

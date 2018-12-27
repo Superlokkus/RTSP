@@ -7,14 +7,12 @@
 #include <rtsp_headers.hpp>
 #include <rtp_endsystem.hpp>
 
-#include <boost/uuid/uuid_io.hpp>
-
 rtsp::response rtsp::methods::common_response_sekeleton(const rtsp::rtsp_server_session &session,
                                                         const rtsp::internal_request &request) {
     return rtsp::response{common_rtsp_major_version, common_rtsp_minor_version,
                           200, "OK", {
                                   {"CSeq", request.second.at("cseq")},
-                                  {"Session", boost::uuids::to_string(session.identifier())},
+                                  {"Session", session.identifier()},
                           }};
 }
 

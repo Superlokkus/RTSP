@@ -29,7 +29,7 @@ rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_cl
 
     std::uniform_int_distribution<int> uniform_dist(1, 6);
 
-    const auto thread_count{std::max<unsigned>(std::thread::hardware_concurrency(), 1)};
+    const auto thread_count{std::max<unsigned>(std::thread::hardware_concurrency() / 2u, 1u)};
     this->process_url(url);
     std::generate_n(std::back_inserter(this->io_run_threads_),
                     thread_count,
@@ -129,6 +129,10 @@ void rtsp::rtsp_client::open_socket(callback&& then) {
     }));
 }
 
+void rtsp::rtsp_client::send_request(rtsp::request request, std::function<void(rtsp::response)> reponse_handler) {
+
+}
+
 void rtsp::rtsp_client::setup() {
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
         auto send_setup_request = [this]() {
@@ -154,7 +158,23 @@ void rtsp::rtsp_client::setup() {
                                           {"CSeq", std::to_string(this->session_.next_cseq++)},
                                           {"Transport", std::move(transport_string)}
                                   }};
-//Cursor Actually send it
+            this->send_request(std::move(request), [this](rtsp::response response) {
+                if (response.status_code < 200 || response.status_code >= 300) {
+                    throw std::runtime_error(std::string("Got non ok status code: ") +
+                                             std::to_string(response.status_code));
+                }
+                const auto normalized_headers = rtsp::headers::normalize_headers(response.headers);
+
+                if (normalized_headers.count("session") == 0 ||
+                    normalized_headers.count("transport") == 0)
+                    throw std::runtime_error("Missing session or transport header in setup response");
+
+                this->session_.set_identifier(normalized_headers.at("session"));
+
+
+                this->log_handler_(std::string("Got rtsp status ") + std::to_string(response.status_code)
+                                   + " switching state");
+            });
         };
 
         if (!this->rtsp_socket_.is_open()) {
