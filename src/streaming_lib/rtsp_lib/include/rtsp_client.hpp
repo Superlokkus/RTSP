@@ -78,6 +78,7 @@ private:
 
     rtsp_client_session session_;
     std::unordered_map<rtsp::cseq, std::function<void(rtsp::response)>> outstanding_requests_;
+    boost::asio::streambuf in_streambuf_;
 
     /*! For use in the constructor, unsychronized
      *
@@ -98,11 +99,18 @@ private:
     void open_socket(callback &&then);
 
     /*! For use in already synchronized methods, unsychronized
-     * @param request Request to send, cseq ist required
+     * @param request Request to send, "CSeq" will be inserted as first header
      * @param response_callback Will be called when a non 1xx response to the request was received, already
      * sychronized with strand
      */
     void send_request(rtsp::request request, std::function<void(rtsp::response)> reponse_handler);
+
+    /*! @brief Parses the raw header
+     * @param error Error from boost asio
+     * @param bytes_transferred Bytes transfered from boost asio
+     */
+    void header_read(const boost::system::error_code &error,
+                     std::size_t bytes_transferred);
 };
 
 }
