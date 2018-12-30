@@ -56,7 +56,7 @@ protected:
 struct rtsp_server_session final : public rtsp_session<rtsp_server_session> {
     friend class rtsp_session<rtsp_server_session>;
 
-    std::unique_ptr<rtp::unicast_jpeg_rtp_session> rtp_session{};
+    std::unique_ptr<rtp::unicast_jpeg_rtp_sender> rtp_session{};
     boost::asio::ip::address last_seen_request_address{};
 
 private:

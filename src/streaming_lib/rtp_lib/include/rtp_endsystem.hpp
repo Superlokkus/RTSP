@@ -15,15 +15,15 @@
 
 namespace rtp {
 
-class unicast_jpeg_rtp_session final {
+class unicast_jpeg_rtp_sender final {
 public:
-    unicast_jpeg_rtp_session() = delete;
+    unicast_jpeg_rtp_sender() = delete;
 
-    unicast_jpeg_rtp_session(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
+    unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
                              uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
                              boost::asio::io_context &io_context);
 
-    ~unicast_jpeg_rtp_session();
+    ~unicast_jpeg_rtp_sender();
 
     void start();
 
