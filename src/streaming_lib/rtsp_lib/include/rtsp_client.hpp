@@ -17,6 +17,7 @@
 
 #include <rtsp_session.hpp>
 #include <rtsp_definitions.hpp>
+#include <rtp_endsystem.hpp>
 
 namespace rtsp {
 
@@ -80,6 +81,8 @@ private:
     std::unordered_map<rtsp::cseq, std::function<void(rtsp::response)>> outstanding_requests_;
     boost::asio::streambuf in_streambuf_;
 
+    std::unique_ptr<rtp::unicast_jpeg_rtp_receiver> rtp_receiver_;
+
     /*! For use in the constructor, unsychronized
      *
      * @param url
@@ -111,6 +114,13 @@ private:
      */
     void header_read(const boost::system::error_code &error,
                      std::size_t bytes_transferred);
+
+    /*!
+     * @param transport_header Header string to parse
+     * @returns To be used client port and ssrc
+     * @throws std::runtime_error when parsing fails or information is missing or not suitable
+     */
+    static std::tuple<uint16_t, uint32_t> process_server_transport_header(const rtsp::string &transport_header);
 };
 
 }

@@ -246,9 +246,16 @@ void rtsp::rtsp_client::setup() {
                 + "Using session id \"" + this->session_.identifier() + "\" "
                                    + " switching state to ready");
 
-                this->session_.set_session_state(rtsp_client_session::state::ready);
 
-                //TODO rest of rtp sideeffects
+                const auto parameters = process_server_transport_header(normalized_headers.at("transport"));
+                this->rtp_receiver_ = std::make_unique<rtp::unicast_jpeg_rtp_receiver>(
+                        std::get<0>(parameters),
+                        std::get<1>(parameters),
+                        this->frame_handler_,
+                        this->io_context_
+                );
+
+                this->session_.set_session_state(rtsp_client_session::state::ready);
             });
         };
 
@@ -258,6 +265,69 @@ void rtsp::rtsp_client::setup() {
             send_setup_request();
         }
     }));
+}
+
+std::tuple<uint16_t, uint32_t>
+rtsp::rtsp_client::process_server_transport_header(const rtsp::string &transport_header) {
+    std::tuple<uint16_t, uint32_t> return_value{};
+    headers::transport transport_from_server;
+    using namespace boost::spirit;
+    rtsp::headers::transport_grammar<std::string::const_iterator> grammar{};
+    bool valid = qi::parse(transport_header.begin(),
+                           transport_header.end(),
+                           grammar, transport_from_server);
+    if (!valid)
+        throw std::runtime_error(std::string{"Could not parse transport from server: \""} +
+                                 transport_header + "\"");
+
+    auto transport_spec = std::find_if(transport_from_server.specifications.cbegin(),
+                                       transport_from_server.specifications.cend(),
+                                       [](const headers::transport::transport_spec &value) {
+                                           return value.transport_protocol == "RTP" &&
+                                                  value.profile == "AVP" &&
+                                                  value.lower_transport.value_or("UDP") == "UDP" &&
+                                                  value.parameters.size() > 0 &&
+                                                  value.parameters.at(0).which() == 4 &&
+                                                  boost::get<string>(value.parameters.at(0)) == "unicast";
+                                       });
+    if (transport_spec == transport_from_server.specifications.cend())
+        throw std::runtime_error{"No RTP/AVP/UDP unicast transport option offered by server"};
+
+    auto parameter_begin = transport_spec->parameters.cbegin();
+    auto parameter_end = transport_spec->parameters.cend();
+
+    auto parameter = std::find_if(parameter_begin, parameter_end,
+                                  [](const auto &value) {
+                                      return value.which() == 1 && (
+                                              boost::get<headers::transport::transport_spec::port>(value).type ==
+                                              headers::transport::transport_spec::port::port_type::client
+                                              ||
+                                              boost::get<headers::transport::transport_spec::port>(value).type ==
+                                              headers::transport::transport_spec::port::port_type::general
+                                      );
+                                  });
+    if (parameter == parameter_end)
+        throw std::runtime_error{"No client or general port parameter found in server transport specification"};
+
+
+    const auto &port = boost::get<headers::transport::transport_spec::port>(*parameter);
+    if (port.port_numbers.which() == 0) {
+        std::get<0>(return_value) = boost::get<headers::transport::transport_spec::port_number>(port.port_numbers);
+    } else {
+        std::get<0>(return_value) = boost::get<headers::transport::transport_spec::port_range>
+                (port.port_numbers).first;
+    }
+
+    parameter = std::find_if(parameter_begin, parameter_end,
+                             [](const auto &value) {
+                                 return value.which() == 2;
+                             });
+    if (parameter == parameter_end)
+        throw std::runtime_error{"No ssrc parameter found in server transport specification"};
+
+    std::get<1>(return_value) = boost::get<headers::transport::transport_spec::ssrc>(*parameter);
+
+    return return_value;
 }
 
 void rtsp::rtsp_client::play() {

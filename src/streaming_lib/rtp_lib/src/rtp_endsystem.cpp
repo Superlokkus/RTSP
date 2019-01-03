@@ -106,3 +106,22 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
                                                                            this,
                                                                            std::placeholders::_1, current_frame + 1)));
 }
+
+rtp::unicast_jpeg_rtp_receiver::unicast_jpeg_rtp_receiver(uint16_t sink_port,
+                                                          uint32_t ssrc, std::function<void(jpeg_frame)> frame_handler,
+                                                          boost::asio::io_context &io_context) :
+        io_context_(io_context),
+        socket_v4_(io_context_, boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v4(), sink_port}),
+        socket_v6_(io_context_, boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(), sink_port}),
+        frame_handler_(std::move(frame_handler)),
+        ssrc_(ssrc),
+        strand_(io_context_) {
+    BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_receiver from :" <<
+                             sink_port << " with ssrc " << ssrc;
+
+}
+
+rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
+
+}
+

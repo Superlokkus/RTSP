@@ -20,8 +20,8 @@ public:
     unicast_jpeg_rtp_sender() = delete;
 
     unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
-                             uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
-                             boost::asio::io_context &io_context);
+                            uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
+                            boost::asio::io_context &io_context);
 
     ~unicast_jpeg_rtp_sender();
 
@@ -46,6 +46,28 @@ private:
     static constexpr frame_counter_t frame_absolute_count{500u};//!<ms Should be read from jpeg headers I guess
 
     void send_next_packet_handler(const boost::system::error_code &error, frame_counter_t current_frame);
+};
+
+class unicast_jpeg_rtp_receiver final {
+public:
+    using jpeg_frame = std::vector<uint8_t>;
+
+    unicast_jpeg_rtp_receiver() = delete;
+
+    unicast_jpeg_rtp_receiver(uint16_t sink_port,
+                              uint32_t ssrc, std::function<void(jpeg_frame)> frame_handler,
+                              boost::asio::io_context &io_context);
+
+    ~unicast_jpeg_rtp_receiver();
+
+private:
+    boost::asio::io_context &io_context_;
+    boost::asio::ip::udp::socket socket_v4_;
+    boost::asio::ip::udp::socket socket_v6_;
+    std::function<void(jpeg_frame)> frame_handler_;
+
+    uint32_t ssrc_;
+    boost::asio::io_context::strand strand_;
 };
 
 }
