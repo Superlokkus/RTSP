@@ -259,6 +259,10 @@ void rtsp::rtsp_client::setup() {
             });
         };
 
+        if (this->session_.session_state() != rtsp_client_session::state::init)
+            throw std::runtime_error{"This rtsp client does not like to change transport while playing, "
+                                     "which is also optional by rfc"};
+
         if (!this->rtsp_socket_.is_open()) {
             this->open_socket(send_setup_request);
         } else {
@@ -331,15 +335,70 @@ rtsp::rtsp_client::process_server_transport_header(const rtsp::string &transport
 }
 
 void rtsp::rtsp_client::play() {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        auto send_request = [this]() {
 
+            rtsp::request request{"PLAY", this->rtsp_settings_.original_url, 1, 0};
+            request.headers.emplace_back("session", this->session_.identifier());
+            this->send_request(std::move(request), [this](rtsp::response response) {
+                this->log_handler_("Got play response");
+                this->session_.set_session_state(rtsp_client_session::state::playing);
+            });
+        };
+
+        if (this->session_.session_state() != rtsp_client_session::state::ready &&
+            this->session_.session_state() != rtsp_client_session::state::playing)
+            throw std::runtime_error{"Can request play, not in rtsp ready or playing state"};
+
+        if (!this->rtsp_socket_.is_open()) {
+            this->open_socket(send_request);
+        } else {
+            send_request();
+        }
+    }));
 }
 
 void rtsp::rtsp_client::pause() {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        auto send_request = [this]() {
 
+            rtsp::request request{"PAUSE", this->rtsp_settings_.original_url, 1, 0};
+            request.headers.emplace_back("session", this->session_.identifier());
+            this->send_request(std::move(request), [this](rtsp::response response) {
+                this->log_handler_("Got pause response");
+                this->session_.set_session_state(rtsp_client_session::state::ready);
+            });
+        };
+
+        if (this->session_.session_state() != rtsp_client_session::state::playing)
+            throw std::runtime_error{"Can request pause, not in rtsp playing state"};
+
+        if (!this->rtsp_socket_.is_open()) {
+            this->open_socket(send_request);
+        } else {
+            send_request();
+        }
+    }));
 }
 
 void rtsp::rtsp_client::teardown() {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        auto send_request = [this]() {
 
+            rtsp::request request{"TEARDOWN", this->rtsp_settings_.original_url, 1, 0};
+            request.headers.emplace_back("session", this->session_.identifier());
+            this->send_request(std::move(request), [this](rtsp::response response) {
+                this->log_handler_("Got Teardown response");
+                this->session_.set_session_state(rtsp_client_session::state::init);
+            });
+        };
+
+        if (!this->rtsp_socket_.is_open()) {
+            this->open_socket(send_request);
+        } else {
+            send_request();
+        }
+    }));
 }
 
 void rtsp::rtsp_client::option() {
