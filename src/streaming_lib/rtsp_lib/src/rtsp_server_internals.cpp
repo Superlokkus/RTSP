@@ -48,9 +48,11 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
     } else if (request.method_or_extension == "DESCRIBE") {
         response.status_code = 501;
         response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
+        response.headers.emplace_back("CSeq", headers.at("cseq"));
     } else if (request.method_or_extension == "SETUP" && headers.count("session")) {
         response.status_code = 459;
         response.reason_phrase = "Aggregate Operation Not Allowed";
+        response.headers.emplace_back("CSeq", headers.at("cseq"));
     } else if (request.method_or_extension == "SETUP") {
         rtsp_server_session new_session{};
         auto identifier = new_session.identifier();
@@ -64,12 +66,14 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
     } else if (!headers.count("session")) {
         response.status_code = 400;
         response.reason_phrase = "Session header not found";
+        response.headers.emplace_back("CSeq", headers.at("cseq"));
     } else if (this->methods_.count(request.method_or_extension)) {
         std::lock_guard<std::mutex> lock{this->sessions_mutex_};
         auto session_it = this->sessions_.find(headers.at("session"));
         if (session_it == this->sessions_.end()) {
             response.status_code = 454;
             response.reason_phrase = "Session not found";
+            response.headers.emplace_back("CSeq", headers.at("cseq"));
         } else {
             session_it->second.last_seen_request_address = requester;
             response = this->methods_.at(request.method_or_extension)(session_it->second,
@@ -82,6 +86,7 @@ auto rtsp::server::rtsp_server_state::handle_incoming_request(const request &req
     } else if (!this->methods_.count(request.method_or_extension)) {
         response.status_code = 501;
         response.reason_phrase = std::string{"\""} + request.method_or_extension + "\" not implemented";
+        response.headers.emplace_back("CSeq", headers.at("cseq"));
     }
 
     BOOST_LOG_TRIVIAL(info) << response.status_code << " \"" << response.reason_phrase << "\"";

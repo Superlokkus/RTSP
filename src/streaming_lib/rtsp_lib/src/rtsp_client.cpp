@@ -243,8 +243,8 @@ void rtsp::rtsp_client::setup() {
                 this->session_.set_identifier(normalized_headers.at("session"));
 
                 this->log_handler_(std::string("Got rtsp status ") + std::to_string(response.status_code)
-                + "Using session id \"" + this->session_.identifier() + "\" "
-                                   + " switching state to ready");
+                                   + "\nUsing session id \"" + this->session_.identifier() + "\" "
+                                   + " switching state to ready\n");
 
 
                 const auto parameters = process_server_transport_header(normalized_headers.at("transport"));
@@ -343,9 +343,37 @@ void rtsp::rtsp_client::teardown() {
 }
 
 void rtsp::rtsp_client::option() {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        auto send_option_request = [this]() {
 
+            rtsp::request request{"OPTIONS", this->rtsp_settings_.original_url, 1, 0};
+            this->send_request(std::move(request), [this](rtsp::response response) {
+                this->log_handler_("Got options response");
+            });
+        };
+
+        if (!this->rtsp_socket_.is_open()) {
+            this->open_socket(send_option_request);
+        } else {
+            send_option_request();
+        }
+    }));
 }
 
 void rtsp::rtsp_client::describe() {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        auto send_describe_request = [this]() {
 
+            rtsp::request request{"DESCRIBE", this->rtsp_settings_.original_url, 1, 0};
+            this->send_request(std::move(request), [this](rtsp::response response) {
+                this->log_handler_("Got DESCRIBE response");
+            });
+        };
+
+        if (!this->rtsp_socket_.is_open()) {
+            this->open_socket(send_describe_request);
+        } else {
+            send_describe_request();
+        }
+    }));
 }
