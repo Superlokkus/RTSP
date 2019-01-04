@@ -219,7 +219,7 @@ struct transport_generators {
     boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::ssrc()>
             ssrc_gen{
             boost::spirit::karma::lit("ssrc=") <<
-                                               boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::ssrc, 10>()
+                                               boost::spirit::karma::uint_generator<rtsp::headers::transport::transport_spec::ssrc, 16>()
     };
 
     boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport::transport_spec::mode()>

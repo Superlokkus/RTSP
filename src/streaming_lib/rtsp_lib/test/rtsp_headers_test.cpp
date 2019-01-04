@@ -27,7 +27,7 @@ struct transport_phrases_fixture {
     std::string simple_transport_spec{"RTP/AVP/TCP"};
 
     std::string transport_specs{"RTP/AVP;multicast;ttl=127;mode=\"PLAY\","
-                                "RTP/AVP;unicast;client_port=3456-3457;mode=\"PLAY\""};
+                                "RTP/AVP;unicast;client_port=3456-3457;mode=\"PLAY\";ssrc=DEADBEEF"};
 
     std::vector<std::string> invalid_stuff{
             {"RTSP/1.0\t200 \t  OK\r\n"},
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 struct transport_spec_phrases_fixture {
     std::string spec_multi_ttl_play{"RTP/AVP;multicast;ttl=127;mode=\"PLAY\""};
-    std::string spec_uni_client_play{"RTP/AVP;unicast;client_port=3456-3457;mode=\"PLAY\""};
+    std::string spec_uni_client_play{"RTP/AVP;unicast;client_port=3456-3457;mode=\"PLAY\";ssrc=DEADBEEF"};
 
     std::string::const_iterator begin{};
     std::string::const_iterator end{};
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
     BOOST_CHECK_EQUAL(spec.transport_protocol, "RTP");
     BOOST_CHECK_EQUAL(spec.profile, "AVP");
     BOOST_CHECK(!spec.lower_transport);
-    BOOST_CHECK_EQUAL(spec.parameters.size(), 3);
+    BOOST_CHECK_EQUAL(spec.parameters.size(), 4);
     BOOST_CHECK_EQUAL(spec.parameters.at(1).which(), 1);
     const auto &client_port = boost::get<rtsp::headers::transport::transport_spec::port>(spec.parameters.at(1));
     const auto client_port_range = boost::get<rtsp::headers::transport::transport_spec::port_range>(
@@ -131,6 +131,7 @@ BOOST_AUTO_TEST_CASE(spec_uni_client_play_test) {
     BOOST_CHECK(client_port_range == should_range);
     BOOST_CHECK(client_port.type == rtsp::headers::transport::transport_spec::port::port_type::client);
     BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::mode>(spec.parameters.at(2)), "PLAY");
+    BOOST_CHECK_EQUAL(boost::get<rtsp::headers::transport::transport_spec::ssrc>(spec.parameters.at(3)), 0xDEADBEEF);
     BOOST_CHECK_EQUAL(boost::get<rtsp::string>(spec.parameters.at(0)), "unicast");
 }
 
@@ -174,7 +175,8 @@ BOOST_AUTO_TEST_CASE(transport_spec_gen_test) {
             rtsp::headers::transport::transport_spec::port{
                     rtsp::headers::transport::transport_spec::port::port_type::client,
                     rtsp::headers::transport::transport_spec::port_range{5, 1337}},
-            rtsp::headers::transport::transport_spec::mode{"PLAY"}
+            rtsp::headers::transport::transport_spec::mode{"PLAY"},
+            rtsp::headers::transport::transport_spec::ssrc{0xDEADBEEF}
     }};
     rtsp::headers::transport::transport_spec spec2{"RTP", "AVP", boost::none};
     rtsp::headers::transport transport{{spec1, spec2}};
@@ -182,7 +184,7 @@ BOOST_AUTO_TEST_CASE(transport_spec_gen_test) {
     rtsp::headers::generate_transport_header_grammar<std::back_insert_iterator<std::string>> gen_grammar{};
     const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, transport);
     BOOST_CHECK(success);
-    BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP;port=42;client_port=5-1337;mode=\"PLAY\",RTP/AVP");
+    BOOST_CHECK_EQUAL(output, "RTP/AVP/UDP;port=42;client_port=5-1337;mode=\"PLAY\";ssrc=deadbeef,RTP/AVP");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
