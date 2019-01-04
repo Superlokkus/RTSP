@@ -111,17 +111,79 @@ rtp::unicast_jpeg_rtp_receiver::unicast_jpeg_rtp_receiver(uint16_t sink_port,
                                                           uint32_t ssrc, std::function<void(jpeg_frame)> frame_handler,
                                                           boost::asio::io_context &io_context) :
         io_context_(io_context),
-        socket_v4_(io_context_, boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v4(), sink_port}),
-        socket_v6_(io_context_, boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(), sink_port}),
+        socket_v4_{std::forward_as_tuple(
+                boost::asio::ip::udp::socket{io_context_,
+                                             boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v4(),
+                                                                            sink_port}},
+                boost::asio::io_context::strand{io_context_},
+                udp_buffer{},
+                boost::asio::ip::udp::endpoint{}
+        )},
+        socket_v6_{std::forward_as_tuple(
+                boost::asio::ip::udp::socket{io_context_,
+                                             boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(),
+                                                                            sink_port}},
+                boost::asio::io_context::strand{io_context_},
+                udp_buffer{},
+                boost::asio::ip::udp::endpoint{}
+        )},
         frame_handler_(std::move(frame_handler)),
         ssrc_(ssrc),
         strand_(io_context_) {
     BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_receiver from :" <<
                              sink_port << " with ssrc " << ssrc;
+    this->start_async_receive(this->socket_v4_);
+    this->start_async_receive(this->socket_v6_);
+}
 
+void rtp::unicast_jpeg_rtp_receiver::start_async_receive(rtp::unicast_jpeg_rtp_receiver::shared_udp_socket &socket) {
+    std::get<0>(socket).async_receive_from(boost::asio::buffer(std::get<2>(socket)),
+                                           std::get<3>(socket),
+                                           boost::asio::bind_executor(std::get<1>(socket), std::bind(
+                                                   &rtp::unicast_jpeg_rtp_receiver::handle_incoming_udp_traffic,
+                                                   this,
+                                                   std::placeholders::_1,
+                                                   std::placeholders::_2,
+                                                   std::ref(socket)
+                                           )));
+}
+
+void rtp::unicast_jpeg_rtp_receiver::handle_incoming_udp_traffic(const boost::system::error_code &error,
+                                                                 std::size_t received_bytes,
+                                                                 rtp::unicast_jpeg_rtp_receiver::shared_udp_socket &incoming_socket) {
+    if (error)
+        throw std::runtime_error{error.message()};
+
+    auto data = std::make_shared<std::vector<char>>();
+
+    std::copy_n(std::get<2>(incoming_socket).cbegin(), received_bytes, std::back_inserter(*data));
+    boost::asio::ip::udp::endpoint received_from_endpoint = std::get<3>(incoming_socket);
+
+    boost::asio::dispatch(std::get<1>(incoming_socket).get_io_context(),
+                          boost::asio::bind_executor(this->strand_,
+                                                     std::bind(
+                                                             &rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message,
+                                                             this,
+                                                             data, std::ref(incoming_socket),
+                                                             received_from_endpoint))
+    );
+
+    start_async_receive(incoming_socket);
+}
+
+void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
+                                                                 rtp::unicast_jpeg_rtp_receiver::shared_udp_socket &socket_received_from,
+                                                                 boost::asio::ip::udp::endpoint received_from_endpoint) {
+    BOOST_LOG_TRIVIAL(debug) << "Got new udp message in unicast_jpeg_rtp_receiver";
+    BOOST_LOG_TRIVIAL(trace) << message;
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
-
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(std::get<1>(this->socket_v4_), [this]() {
+        std::get<0>(this->socket_v4_).cancel();
+    }));
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(std::get<1>(this->socket_v6_), [this]() {
+        std::get<0>(this->socket_v6_).cancel();
+    }));
 }
 

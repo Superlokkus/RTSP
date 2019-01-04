@@ -62,12 +62,29 @@ public:
 
 private:
     boost::asio::io_context &io_context_;
-    boost::asio::ip::udp::socket socket_v4_;
-    boost::asio::ip::udp::socket socket_v6_;
+
+    using udp_buffer = std::array<char, 0xFFFF>;
+    using shared_udp_socket = std::tuple<boost::asio::ip::udp::socket,
+            boost::asio::io_context::strand,
+            udp_buffer,
+            boost::asio::ip::udp::endpoint>;
+    shared_udp_socket socket_v4_;
+    shared_udp_socket socket_v6_;
+
     std::function<void(jpeg_frame)> frame_handler_;
 
     uint32_t ssrc_;
     boost::asio::io_context::strand strand_;
+
+    void start_async_receive(shared_udp_socket &socket);
+
+    void handle_incoming_udp_traffic(const boost::system::error_code &error,
+                                     std::size_t received_bytes,
+                                     shared_udp_socket &incoming_socket);
+
+    void handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
+                                     shared_udp_socket &socket_received_from,
+                                     boost::asio::ip::udp::endpoint received_from_endpoint);
 };
 
 }
