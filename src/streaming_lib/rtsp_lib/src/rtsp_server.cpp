@@ -110,6 +110,7 @@ struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_conn
             throw std::runtime_error{error.message()};
         if (bytes_transferred != last_response_string_.size())
             throw std::runtime_error{"TCP bytes sent not equal"};
+        this->last_response_string_.clear();
     }
 
     /*! @brief Ensures proper timeout mechanism
