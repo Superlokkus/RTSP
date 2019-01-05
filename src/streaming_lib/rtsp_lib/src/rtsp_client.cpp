@@ -163,38 +163,45 @@ void rtsp::rtsp_client::header_read(const boost::system::error_code &error, std:
     }
 
     using namespace boost::spirit;
-    rtsp_response_grammar<multi_pass<std::istreambuf_iterator<char>>> response_grammar{};
+    rtsp_response_grammar<std::string::const_iterator> response_grammar{};
     rtsp::response response;
     std::istream stream(&this->in_streambuf_);
-    auto begin = make_default_multi_pass(std::istreambuf_iterator<char>(stream));
-    bool valid = qi::phrase_parse(begin,
-                                                       make_default_multi_pass(
-                                                               std::istreambuf_iterator<char>()),
-                                                       response_grammar, ns::space, response);
+
+    auto stream_it = std::istreambuf_iterator<char>(stream);
+    this->parser_buffer_.clear();
+    std::copy_n(stream_it, bytes_transferred, std::back_inserter(parser_buffer_));
+    if (bytes_transferred > 0)
+        ++stream_it;
+
+    auto begin = parser_buffer_.cbegin(), end = parser_buffer_.cend();
+    bool valid = qi::parse(begin, end, response_grammar, response);
 
     if (!valid)
-        this->log_handler_(std::string{"Could not read response: \""} +
-        std::string{make_default_multi_pass(std::istreambuf_iterator<char>(stream)),
-                                                           make_default_multi_pass(
-                                                                   std::istreambuf_iterator<char>())}
-                                                                   + "\"");
+        this->log_handler_(std::string{"Could not read response: after \""} +
+                           std::string{begin, end}
+                           + "\"");
 
     const auto normalized_headers = rtsp::headers::normalize_headers(response.headers);
     rtsp::cseq cseq{};
     valid = qi::parse(normalized_headers.at("cseq").begin(), normalized_headers.at("cseq").end(),
-                                     qi::uint_parser<rtsp::cseq, 10>(), cseq);
+                      qi::uint_parser<rtsp::cseq, 10>(), cseq);
 
     if (!valid)
         this->log_handler_(std::string{"Could not read CSeq: \""} +
-        normalized_headers.at("cseq") + "\"");
+                           normalized_headers.at("cseq") + "\"");
 
     if (response.status_code < 200) {
         this->log_handler_("Statuscode of response 1xx, waiting for final response");
     } else {
-        this->outstanding_requests_.at(cseq)(std::move(response));
-        this->outstanding_requests_.erase(cseq);
+        try {
+            this->outstanding_requests_.at(cseq)(std::move(response));
+            this->outstanding_requests_.erase(cseq);
+        } catch (std::out_of_range &e) {
+            this->log_handler_(
+                    std::string{"Handler for Cseq "} + std::to_string(cseq) + " not found because either" +
+                    "already invoked and this is a legal duplicate or wrong cseq handling");
+        };
     }
-
     boost::asio::async_read_until(this->rtsp_socket_, this->in_streambuf_,
                                   boost::asio::string_view{"\r\n\r\n"},
                                   boost::asio::bind_executor(this->strand_,std::bind(

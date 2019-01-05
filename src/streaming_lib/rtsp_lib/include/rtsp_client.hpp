@@ -80,6 +80,7 @@ private:
     rtsp_client_session session_;
     std::unordered_map<rtsp::cseq, std::function<void(rtsp::response)>> outstanding_requests_;
     boost::asio::streambuf in_streambuf_;
+    std::string parser_buffer_;
 
     std::unique_ptr<rtp::unicast_jpeg_rtp_receiver> rtp_receiver_;
 
