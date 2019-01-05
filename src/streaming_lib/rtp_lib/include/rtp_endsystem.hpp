@@ -12,6 +12,7 @@
 #include <atomic>
 
 #include <boost/asio.hpp>
+#include <boost/optional.hpp>
 
 namespace rtp {
 
@@ -75,6 +76,8 @@ private:
 
     uint32_t ssrc_;
     boost::asio::io_context::strand strand_;
+
+    boost::optional<uint16_t> intial_sequence_number_;
 
     void start_async_receive(shared_udp_socket &socket);
 

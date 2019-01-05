@@ -174,8 +174,28 @@ void rtp::unicast_jpeg_rtp_receiver::handle_incoming_udp_traffic(const boost::sy
 void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
                                                                  rtp::unicast_jpeg_rtp_receiver::shared_udp_socket &socket_received_from,
                                                                  boost::asio::ip::udp::endpoint received_from_endpoint) {
-    BOOST_LOG_TRIVIAL(debug) << "Got new udp message in unicast_jpeg_rtp_receiver";
-    BOOST_LOG_TRIVIAL(trace) << message;
+    BOOST_LOG_TRIVIAL(trace) << "Got new udp message in unicast_jpeg_rtp_receiver";
+
+    rtp::packet::custom_jpeg_packet_grammar<std::vector<char>::const_iterator> custom_jpeg_grammar{};
+    auto begin = message->cbegin(), end = message->cend();
+
+    rtp::packet::custom_jpeg_packet jpeg_packet;
+    auto success = boost::spirit::qi::parse(begin, end, custom_jpeg_grammar, jpeg_packet);
+
+    if (!success) {
+        BOOST_LOG_TRIVIAL(debug) << "Not parseable as jpeg packet";
+        return;
+    }
+
+    if (jpeg_packet.header.ssrc != this->ssrc_) {
+        throw std::runtime_error{"Got jpeg rtp packet with wrong ssrc, dropping"};
+    }
+    if (!this->intial_sequence_number_) {
+        BOOST_LOG_TRIVIAL(debug) << "Setting intial rtp sequence_number";
+        this->intial_sequence_number_ = jpeg_packet.header.sequence_number;
+    }
+    this->frame_handler_(jpeg_packet.data);
+
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
