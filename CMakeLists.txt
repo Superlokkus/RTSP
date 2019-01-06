@@ -10,6 +10,10 @@ ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
 find_package(Boost COMPONENTS log system thread REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
+if (${TEST_ENABLED})
+    enable_testing()
+endif ()
+
 add_subdirectory(src/streaming_lib)
 
 if (${TEST_ENABLED})
