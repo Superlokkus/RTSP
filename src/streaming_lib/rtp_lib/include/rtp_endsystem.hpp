@@ -10,9 +10,12 @@
 #include <memory>
 #include <istream>
 #include <atomic>
+#include <deque>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
+
+#include <rtp_packet.hpp>
 
 namespace rtp {
 
@@ -127,8 +130,11 @@ private:
 
     uint32_t ssrc_;
     boost::asio::io_context::strand strand_;
+    boost::asio::steady_timer display_next_frame_timer_;
 
-    boost::optional<uint16_t> intial_sequence_number_;
+    std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_buffer_;
+
+    const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
 
     void start_async_receive(shared_udp_socket &socket);
 
@@ -139,6 +145,8 @@ private:
     void handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
                                      shared_udp_socket &socket_received_from,
                                      boost::asio::ip::udp::endpoint received_from_endpoint);
+
+    void display_next_frame_timer_handler(const boost::system::error_code &error);
 };
 
 }

@@ -7,8 +7,6 @@
 #include <array>
 #include <algorithm>
 
-#include <rtp_packet.hpp>
-
 #include <boost/log/trivial.hpp>
 
 rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination,
@@ -129,9 +127,17 @@ rtp::unicast_jpeg_rtp_receiver::unicast_jpeg_rtp_receiver(uint16_t sink_port,
         )},
         frame_handler_(std::move(frame_handler)),
         ssrc_(ssrc),
-        strand_(io_context_) {
+        strand_(io_context_),
+        display_next_frame_timer_(io_context_) {
     BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_receiver from :" <<
                              sink_port << " with ssrc " << ssrc;
+
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        this->display_next_frame_timer_.expires_after(boost::asio::chrono::milliseconds(20));
+        this->display_next_frame_timer_.async_wait(
+                std::bind(&unicast_jpeg_rtp_receiver::display_next_frame_timer_handler, this,
+                          std::placeholders::_1));
+    }));
     this->start_async_receive(this->socket_v4_);
     this->start_async_receive(this->socket_v6_);
 }
@@ -190,12 +196,26 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
     if (jpeg_packet.header.ssrc != this->ssrc_) {
         throw std::runtime_error{"Got jpeg rtp packet with wrong ssrc, dropping"};
     }
-    if (!this->intial_sequence_number_) {
-        BOOST_LOG_TRIVIAL(debug) << "Setting intial rtp sequence_number";
-        this->intial_sequence_number_ = jpeg_packet.header.sequence_number;
-    }
-    this->frame_handler_(jpeg_packet.data);
 
+    this->jpeg_packet_buffer_.push_back(std::move(jpeg_packet));
+}
+
+void rtp::unicast_jpeg_rtp_receiver::display_next_frame_timer_handler(const boost::system::error_code &error) {
+    if (error)
+        throw std::runtime_error{error.message()};
+
+    if (!this->jpeg_packet_buffer_.empty()) {
+        this->frame_handler_(this->jpeg_packet_buffer_.front().data);
+        this->jpeg_packet_buffer_.pop_front();
+    }
+
+    this->display_next_frame_timer_.expires_at(this->display_next_frame_timer_.expiry()
+                                               + boost::asio::chrono::milliseconds(this->frame_period));
+    this->display_next_frame_timer_.async_wait(boost::asio::bind_executor(this->strand_,
+                                                                          std::bind(
+                                                                                  &unicast_jpeg_rtp_receiver::display_next_frame_timer_handler,
+                                                                                  this,
+                                                                                  std::placeholders::_1)));
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
@@ -204,6 +224,9 @@ rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
     }));
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(std::get<1>(this->socket_v6_), [this]() {
         std::get<0>(this->socket_v6_).cancel();
+    }));
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
+        this->display_next_frame_timer_.cancel();
     }));
 }
 
