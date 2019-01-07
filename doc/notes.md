@@ -37,3 +37,28 @@ RTP
 - The RTP timestamp is in units of 90000Hz. 
 - JPEG: Image = 1>= Passes/Frame >=1 Scans >=1 Components <=4
 - First five octets == Framelength in octets in ASCII excluding the 5 size octets
+
+Receiver
+---------
+- s->probation is set to the number of
+   sequential packets required before declaring a source valid
+   (parameter MIN_SEQUENTIAL) and other variables are initialized:
+
+      init_seq(s, seq);
+      s->max_seq = seq - 1;
+      s->probation = MIN_SEQUENTIAL;
+- After a source is considered valid, the sequence number is considered
+     valid if it is no more than MAX_DROPOUT ahead of s->max_seq nor more
+     than MAX_MISORDER behind.  If the new sequence number is ahead of
+     max_seq modulo the RTP sequence number range (16 bits), but is
+     smaller than max_seq, it has wrapped around and the (shifted) count
+     of sequence number cycles is incremented.  A value of one is returned
+     to indicate a valid sequence number.
+- Otherwise, the value zero is returned to indicate that the validation
+     failed, and the bad sequence number plus 1 is stored.  If the next
+     packet received carries the next higher sequence number, it is
+     considered the valid start of a new packet sequence presumably caused
+     by an extended dropout or a source restart.  Since multiple complete
+     sequence number cycles may have been missed, the packet loss
+     statistics are reset.
+

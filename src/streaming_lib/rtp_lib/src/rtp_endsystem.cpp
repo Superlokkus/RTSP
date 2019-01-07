@@ -207,3 +207,69 @@ rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
     }));
 }
 
+rtp::rtp_receiver_squence_utility::rtp_receiver_squence_utility(uint16_t seq) {
+    this->init_seq(seq);
+    this->max_seq = seq - 1;
+    this->probation = MIN_SEQUENTIAL;
+}
+
+void rtp::rtp_receiver_squence_utility::init_seq(uint16_t seq) {
+    this->base_seq = seq;
+    this->max_seq = seq;
+    this->bad_seq = RTP_SEQ_MOD + 1;   /* so seq == bad_seq is false */
+    this->cycles = 0;
+    this->received = 0;
+    this->received_prior = 0;
+    this->expected_prior = 0;
+}
+
+int rtp::rtp_receiver_squence_utility::update_seq(uint16_t seq) {
+    uint16_t udelta = seq - this->max_seq;
+    /*
+     * Source is not valid until MIN_SEQUENTIAL packets with
+     * sequential sequence numbers have been received.
+     */
+    if (this->probation) {
+        /* packet is in sequence */
+        if (seq == this->max_seq + 1) {
+            this->probation--;
+            this->max_seq = seq;
+            if (this->probation == 0) {
+                init_seq(seq);
+                this->received++;
+                return 1;
+            }
+        } else {
+            this->probation = MIN_SEQUENTIAL - 1;
+            this->max_seq = seq;
+        }
+        return 0;
+    } else if (udelta < MAX_DROPOUT) {
+        /* in order, with permissible gap */
+        if (seq < this->max_seq) {
+            /*
+             * Sequence number wrapped - count another 64K cycle.
+             */
+            this->cycles += RTP_SEQ_MOD;
+        }
+        this->max_seq = seq;
+    } else if (udelta <= RTP_SEQ_MOD - MAX_MISORDER) {
+        /* the sequence number made a very large jump */
+        if (seq == this->bad_seq) {
+            /*
+             * Two sequential packets -- assume that the other side
+             * restarted without telling us so just re-sync
+             * (i.e., pretend this was the first packet).
+             */
+            init_seq(seq);
+        } else {
+            this->bad_seq = (seq + 1) & (RTP_SEQ_MOD - 1);
+            return 0;
+        }
+    } else {
+        /* duplicate or reordered packet */
+    }
+    this->received++;
+    return 1;
+}
+

@@ -49,6 +49,57 @@ private:
     void send_next_packet_handler(const boost::system::error_code &error, frame_counter_t current_frame);
 };
 
+/*! @brief RTP receiver algorithms and metrics derived from RFC appendix reference implementation
+ *
+ */
+class rtp_receiver_squence_utility {
+public:
+    rtp_receiver_squence_utility(uint16_t seq);
+
+    void init_seq(uint16_t seq);
+
+    /*!
+     *
+     * @param seq
+     * @return A value of one is returned to indicate a valid sequence number.
+     * Otherwise, the value zero is returned to indicate that the validation failed.
+     */
+    int update_seq(uint16_t seq);
+
+    uint64_t extended_max() const {
+        return this->cycles + this->max_seq;
+    }
+
+    uint64_t expected() const {
+        return this->extended_max() - this->base_seq + 1;
+    }
+
+    uint64_t lost() const {
+        return expected() - this->received;
+    }
+
+    uint32_t received_packets() const {
+        return this->received;
+    }
+
+private:
+    uint16_t max_seq;        /*!< highest seq. number seen */
+    uint32_t cycles;         /*!< shifted count of seq. number cycles */
+    uint32_t base_seq;       /*!< base seq number */
+    uint32_t bad_seq;        /*!< last 'bad' seq number + 1 */
+    uint32_t probation;      /*!< sequ. packets till source is valid */
+    uint32_t received;       /*!< packets received */
+    uint32_t expected_prior; /*!< packet expected at last interval */
+    uint32_t received_prior; /*!< packet received at last interval */
+    uint32_t transit;        /*!< relative trans time for prev pkt */
+    uint32_t jitter;         /*!< estimated jitter */
+
+    const int MAX_DROPOUT = 3000;
+    const int MAX_MISORDER = 100;
+    const int MIN_SEQUENTIAL = 2;
+    const uint32_t RTP_SEQ_MOD = (1 << 16);
+};
+
 class unicast_jpeg_rtp_receiver final {
 public:
     using jpeg_frame = std::vector<uint8_t>;
