@@ -210,6 +210,13 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
         BOOST_LOG_TRIVIAL(error) << "Invalid jpeg data!";
     }
 
+    if (!sequence_utility_) {
+        sequence_utility_ = boost::make_optional<rtp_receiver_squence_utility>(jpeg_packet.header.sequence_number);
+    }
+    if (sequence_utility_->update_seq(jpeg_packet.header.sequence_number) == 0) {
+        BOOST_LOG_TRIVIAL(trace) << "Packet out of order";
+    }
+
     this->jpeg_packet_buffer_.push_back(std::move(jpeg_packet));
 }
 

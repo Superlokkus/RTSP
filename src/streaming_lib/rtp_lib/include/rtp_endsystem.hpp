@@ -97,10 +97,10 @@ private:
     uint32_t transit;        /*!< relative trans time for prev pkt */
     uint32_t jitter;         /*!< estimated jitter */
 
-    const int MAX_DROPOUT = 3000;
-    const int MAX_MISORDER = 100;
-    const int MIN_SEQUENTIAL = 2;
-    const uint32_t RTP_SEQ_MOD = (1 << 16);
+    int MAX_DROPOUT = 3000;
+    int MAX_MISORDER = 100;
+    int MIN_SEQUENTIAL = 2;
+    uint32_t RTP_SEQ_MOD = (1 << 16);
 };
 
 class unicast_jpeg_rtp_receiver final {
@@ -132,7 +132,10 @@ private:
     boost::asio::io_context::strand strand_;
     boost::asio::steady_timer display_next_frame_timer_;
 
+    boost::optional<rtp_receiver_squence_utility> sequence_utility_;
+
     std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_buffer_;
+
 
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
 
