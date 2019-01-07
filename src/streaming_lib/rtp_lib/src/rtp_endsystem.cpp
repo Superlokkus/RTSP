@@ -23,6 +23,8 @@ rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endp
     BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_sender to " <<
                              this->destination_ << " from " << this->socket_.local_endpoint();
     this->jpeg_source_->unsetf(std::ios::skipws);
+    boost::asio::socket_base::send_buffer_size option(65536u);
+    socket_.set_option(option);
 
 }
 
@@ -94,7 +96,13 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
     boost::spirit::karma::generate(std::back_inserter(*buffer), gen_grammar, packet);
 
     this->socket_.async_send_to(boost::asio::buffer(*buffer), this->destination_,
-                                std::bind([](auto buffer) {}, buffer));
+                                std::bind([](const boost::system::error_code &error, std::size_t bytes_transferred,
+                                             auto buffer) {
+                                    if (error)
+                                        throw std::runtime_error{error.message()};
+                                    if (bytes_transferred != buffer->size())
+                                        throw std::runtime_error{"Couldn't send complete rtp packet"};
+                                }, std::placeholders::_1, std::placeholders::_2, buffer));
 
     this->send_packet_timer_.expires_at(this->send_packet_timer_.expiry()
                                         + boost::asio::chrono::milliseconds(this->frame_period));
@@ -195,6 +203,11 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
 
     if (jpeg_packet.header.ssrc != this->ssrc_) {
         throw std::runtime_error{"Got jpeg rtp packet with wrong ssrc, dropping"};
+    }
+
+    if (jpeg_packet.data.at(jpeg_packet.data.size() - 2) != 0xFFu ||
+        jpeg_packet.data.at(jpeg_packet.data.size() - 1) != 0xD9u) {
+        BOOST_LOG_TRIVIAL(error) << "Invalid jpeg data!";
     }
 
     this->jpeg_packet_buffer_.push_back(std::move(jpeg_packet));
