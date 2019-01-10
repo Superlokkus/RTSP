@@ -115,6 +115,15 @@ public:
 
     ~unicast_jpeg_rtp_receiver();
 
+    struct statistics {
+        uint64_t received;
+        uint64_t expected;
+        uint64_t corrected;
+        uint64_t uncorrectable;
+    };
+
+    void set_statistics_handler(std::function<void(statistics)> statistics_handler);
+
 private:
     boost::asio::io_context &io_context_;
 
@@ -127,6 +136,7 @@ private:
     shared_udp_socket socket_v6_;
 
     std::function<void(jpeg_frame)> frame_handler_;
+    std::function<void(statistics)> statistics_handler_;
 
     uint32_t ssrc_;
     boost::asio::io_context::strand strand_;

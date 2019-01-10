@@ -43,6 +43,17 @@ rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_cl
                        +":" + std::to_string(this->rtsp_settings_.port) + this->rtsp_settings_.remainder);
 }
 
+void rtsp::rtsp_client::set_rtp_statistics_handler(
+        std::function<void(rtp::unicast_jpeg_rtp_receiver::statistics)> rtp_statistics_handler) {
+    boost::asio::dispatch(this->io_context_,
+                          boost::asio::bind_executor(this->strand_, [this, rtp_statistics_handler]() {
+                              this->rtp_statistics_handler_ = rtp_statistics_handler;
+                              if (this->rtp_receiver_) {
+                                  this->rtp_receiver_->set_statistics_handler(this->rtp_statistics_handler_);
+                              }
+                          }));
+}
+
 rtsp::rtsp_client::~rtsp_client() {
     work_guard_.reset();
     io_context_.stop();
@@ -62,13 +73,6 @@ void rtsp::rtsp_client::io_run_loop(boost::asio::io_context &context,
             error_handler(e);
         }
     }
-
-}
-
-
-void rtsp::rtsp_client::set_rtp_packet_stat_callbacks(
-        std::function<void(packet_count_t, packet_count_t)> received_packet_handler,
-        std::function<void(packet_count_t, packet_count_t)> fec_packet_handler) {
 
 }
 
@@ -261,6 +265,7 @@ void rtsp::rtsp_client::setup() {
                         this->frame_handler_,
                         this->io_context_
                 );
+                this->rtp_receiver_->set_statistics_handler(this->rtp_statistics_handler_);
 
                 this->session_.set_session_state(rtsp_client_session::state::ready);
             });

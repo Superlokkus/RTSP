@@ -21,28 +21,31 @@
 
 namespace rtsp {
 
+/*! @brief Class to get jpeg frames from an RTSP 1 source, in order to play use teardown after that setup
+ *
+ * In general uses its own threads and functions are returning immediately
+ */
 class rtsp_client final {
 public:
     using jpeg_frame = std::vector<uint8_t>;
 
+    /*!
+     *
+     * @param url RTSP URL to host which should be used to connect to
+     * @param frame_handler Will be called whenever a new frame should be displayed (timed)
+     * @param error_handler Runtime errors from network or server, or incorrect state for rtsp methods
+     * @param log_handler Diagnostic and rtsp dialogs
+     */
     rtsp_client(std::string url, std::function<void(rtsp::rtsp_client::jpeg_frame)> frame_handler,
                 std::function<void(std::exception &)> error_handler = [](auto) {},
                 std::function<void(const std::string &)>
                 log_handler = [](auto) {}
     );
 
+    void set_rtp_statistics_handler(std::function<void(rtp::unicast_jpeg_rtp_receiver::statistics)>
+                                    rtp_statistics_handler);
+
     ~rtsp_client();
-
-
-    using packet_count_t = uint32_t;
-
-/*!
- *
- * @param received_packet_handler Gets received/expected rtp packet count for session
- * @param fec_packet_handler Gets corrected/not correctable rtp packet count for session
- */
-    void set_rtp_packet_stat_callbacks(std::function<void(packet_count_t, packet_count_t)> received_packet_handler,
-                                       std::function<void(packet_count_t, packet_count_t)> fec_packet_handler);
 
     void setup();
 
@@ -60,6 +63,7 @@ private:
     std::function<void(std::exception &)> error_handler_;
     std::function<void(const std::string &)> log_handler_;
     std::function<void(jpeg_frame)> frame_handler_;
+    std::function<void(rtp::unicast_jpeg_rtp_receiver::statistics)> rtp_statistics_handler_;
 
     std::default_random_engine default_random_engine_;
     boost::asio::io_context io_context_;

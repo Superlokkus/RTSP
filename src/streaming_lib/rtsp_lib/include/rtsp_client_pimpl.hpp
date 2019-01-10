@@ -24,16 +24,14 @@ struct rtsp_client_pimpl final {
 
     ~rtsp_client_pimpl();
 
-    using packet_count_t = uint32_t;
-
     /*!
-     *
-     * @param received_packet_handler Gets received/expected rtp packet count for session
-     * @param fec_packet_handler Gets corrected/not correctable rtp packet count for session
+     * @param rtp_statistics_handler Expect parameters:
+     * uint64_t received;
+     * uint64_t expected;
+     * uint64_t corrected;
+     * uint64_t uncorrectable;
      */
-    void set_rtp_packet_stat_callbacks(std::function<void(packet_count_t, packet_count_t)> received_packet_handler,
-                                       std::function<void(packet_count_t, packet_count_t)> fec_packet_handler);
-
+    void set_rtp_statistics_handler(std::function<void(uint64_t, uint64_t, uint64_t, uint64_t)> rtp_statistics_handler);
 
     void setup();
 

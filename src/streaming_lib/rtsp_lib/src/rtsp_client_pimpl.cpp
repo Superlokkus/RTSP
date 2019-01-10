@@ -18,11 +18,13 @@ rtsp::rtsp_client_pimpl::rtsp_client_pimpl(std::string url, std::function<void(j
 
 rtsp::rtsp_client_pimpl::~rtsp_client_pimpl() = default;
 
-void rtsp::rtsp_client_pimpl::set_rtp_packet_stat_callbacks(
-        std::function<void(packet_count_t, packet_count_t)> received_packet_handler,
-        std::function<void(packet_count_t, packet_count_t)> fec_packet_handler) {
-    this->rtsp_client_->set_rtp_packet_stat_callbacks(std::move(received_packet_handler),
-                                                      std::move(fec_packet_handler));
+void rtsp::rtsp_client_pimpl::set_rtp_statistics_handler(std::function<void(uint64_t, uint64_t, uint64_t, uint64_t)>
+                                                         rtp_statistics_handler) {
+
+    this->rtsp_client_->set_rtp_statistics_handler([rtp_statistics_handler]
+                                                           (rtp::unicast_jpeg_rtp_receiver::statistics s1) {
+        rtp_statistics_handler(s1.received, s1.expected, s1.corrected, s1.uncorrectable);
+    });
 }
 
 void rtsp::rtsp_client_pimpl::setup() {

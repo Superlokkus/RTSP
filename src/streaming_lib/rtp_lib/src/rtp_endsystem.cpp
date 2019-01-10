@@ -57,7 +57,7 @@ void rtp::unicast_jpeg_rtp_sender::stop() {
 
 void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system::error_code &error,
                                                              frame_counter_t current_frame) {
-    BOOST_LOG_TRIVIAL(debug) << "Send next rtp packet, current frame: " << current_frame;
+    //BOOST_LOG_TRIVIAL(trace) << "Send next rtp packet, current frame: " << current_frame;
     if (error || current_frame >= unicast_jpeg_rtp_sender::frame_absolute_count) {
         BOOST_LOG_TRIVIAL(debug) << "Current frame " << current_frame << ">="
                                  << unicast_jpeg_rtp_sender::frame_absolute_count;
@@ -85,7 +85,7 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
         throw std::runtime_error("Could not parse jpeg frame length");
     }
 
-    BOOST_LOG_TRIVIAL(debug) << "Frame_size " << frame_size;
+    //BOOST_LOG_TRIVIAL(trace) << "Frame_size " << frame_size;
     packet.data.reserve(frame_size);
     std::istream_iterator<uint8_t> begin{*this->jpeg_source_};
     std::copy_n(begin, frame_size, std::back_inserter(packet.data));
@@ -188,7 +188,7 @@ void rtp::unicast_jpeg_rtp_receiver::handle_incoming_udp_traffic(const boost::sy
 void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
                                                                  rtp::unicast_jpeg_rtp_receiver::shared_udp_socket &socket_received_from,
                                                                  boost::asio::ip::udp::endpoint received_from_endpoint) {
-    BOOST_LOG_TRIVIAL(trace) << "Got new udp message in unicast_jpeg_rtp_receiver";
+    //BOOST_LOG_TRIVIAL(trace) << "Got new udp message in unicast_jpeg_rtp_receiver";
 
     rtp::packet::custom_jpeg_packet_grammar<std::vector<char>::const_iterator> custom_jpeg_grammar{};
     auto begin = message->cbegin(), end = message->cend();
@@ -210,11 +210,20 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
         BOOST_LOG_TRIVIAL(error) << "Invalid jpeg data!";
     }
 
-    if (!sequence_utility_) {
+    if (!sequence_utility_) { //First packet
         sequence_utility_ = boost::make_optional<rtp_receiver_squence_utility>(jpeg_packet.header.sequence_number);
+        this->jpeg_packet_buffer_.push_back(std::move(jpeg_packet));
     }
     if (sequence_utility_->update_seq(jpeg_packet.header.sequence_number) == 0) {
-        BOOST_LOG_TRIVIAL(trace) << "Packet out of order";
+        BOOST_LOG_TRIVIAL(trace) << "Sequence number invalid: " << jpeg_packet.header.sequence_number <<
+                                 "Expected " << sequence_utility_->expected();
+    }
+
+    if (this->statistics_handler_) {
+        this->statistics_handler_(statistics{this->sequence_utility_->received_packets(),
+                                             this->sequence_utility_->expected(),
+                                             0, 0
+        });
     }
 
     this->jpeg_packet_buffer_.push_back(std::move(jpeg_packet));
@@ -247,6 +256,12 @@ rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
     }));
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
         this->display_next_frame_timer_.cancel();
+    }));
+}
+
+void rtp::unicast_jpeg_rtp_receiver::set_statistics_handler(std::function<void(statistics)> statistics_handler) {
+    boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this, statistics_handler]() {
+        this->statistics_handler_ = statistics_handler;
     }));
 }
 

@@ -14,10 +14,12 @@
 #include <QtGui/QtGui>
 #include <QTextEdit>
 #include <QErrorMessage>
+#include <QProgressBar>
 
 #include <boost/log/trivial.hpp>
 
 #include <streaming_lib.hpp>
+
 
 
 struct rtsp_player::jpeg_player::control_widget : QDockWidget {
@@ -69,6 +71,17 @@ struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
         host_line_edit->setMaxLength(1024);
         form_layout->addRow(tr("&Host:"), host_line_edit);
 
+        received_packet_label = new QLabel();
+        form_layout->addRow(tr("&Received packets:"), received_packet_label);
+
+        lost_packet_label = new QLabel();
+        form_layout->addRow(tr("&Lost packets:"), lost_packet_label);
+
+        relative_loss_progressbar = new QProgressBar();
+        this->relative_loss_progressbar->setMinimum(0);
+        this->relative_loss_progressbar->setMaximum(100);
+        form_layout->addRow(tr("&Lost/Received:"), relative_loss_progressbar);
+
         this->setWidget(inside_widget);
     }
 
@@ -76,10 +89,27 @@ struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
         return this->host_line_edit->text().toStdString();
     }
 
+public slots:
+
+    void update_statistics(unsigned long long received, unsigned long long expected,
+                           unsigned long long corrected, unsigned long long uncorrectable) {
+        this->received_packet_label->setText(QString::fromStdString(std::to_string(received)));
+        this->lost_packet_label->setText(QString::fromStdString(std::to_string(
+                expected - received)));
+        int relative_loss_percentage = expected ?
+                                       received * 100 / expected
+                                                : 0;
+        this->relative_loss_progressbar->setValue(relative_loss_percentage);
+    };
+
 private:
 Q_OBJECT
 
     QLineEdit *host_line_edit = nullptr;
+    QLabel *received_packet_label = nullptr;
+    QLabel *lost_packet_label = nullptr;
+    QProgressBar *relative_loss_progressbar = nullptr;
+
 };
 
 struct rtsp_player::jpeg_player::log_widget : QDockWidget {
@@ -189,6 +219,17 @@ void rtsp_player::jpeg_player::create_new_rtsp_client_() {
                     );
                 }
         );
+        this->pimpl->rtsp_client_->set_rtp_statistics_handler([this](uint64_t received,
+                                                                     uint64_t expected, uint64_t corrected,
+                                                                     uint64_t uncorrectable) {
+            QMetaObject::invokeMethod(
+                    this->get_settings_widget(), "update_statistics", Qt::QueuedConnection,
+                    Q_ARG(unsigned long long, received),
+                    Q_ARG(unsigned long long, expected),
+                    Q_ARG(unsigned long long, corrected),
+                    Q_ARG(unsigned long long, uncorrectable)
+            );
+        });
     } catch (std::exception &e) {
         auto error_message = new QErrorMessage(this);
         error_message->showMessage(QString{e.what()}, "setup failure");
