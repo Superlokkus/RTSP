@@ -73,14 +73,20 @@ struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
 
         received_packet_label = new QLabel();
         form_layout->addRow(tr("&Received packets:"), received_packet_label);
-
         lost_packet_label = new QLabel();
         form_layout->addRow(tr("&Lost packets:"), lost_packet_label);
 
         relative_loss_progressbar = new QProgressBar();
         this->relative_loss_progressbar->setMinimum(0);
         this->relative_loss_progressbar->setMaximum(100);
-        form_layout->addRow(tr("&Lost/Received:"), relative_loss_progressbar);
+        form_layout->addRow(tr("&Received:"), relative_loss_progressbar);
+        relative_loss_label = new QLabel();
+        form_layout->addRow(tr("&Loss:"), relative_loss_label);
+
+        corrected_packet_label = new QLabel();
+        form_layout->addRow(tr("&Corrected packets:"), corrected_packet_label);
+        uncorrectable_packet_label = new QLabel();
+        form_layout->addRow(tr("&Uncorrectable packets:"), uncorrectable_packet_label);
 
         this->setWidget(inside_widget);
     }
@@ -100,6 +106,10 @@ public slots:
                                        received * 100 / expected
                                                 : 0;
         this->relative_loss_progressbar->setValue(relative_loss_percentage);
+        this->relative_loss_label->setText(
+                QString::fromStdString(std::to_string(100 - relative_loss_percentage)) + "%");
+        this->corrected_packet_label->setText(QString::fromStdString(std::to_string(corrected)));
+        this->uncorrectable_packet_label->setText(QString::fromStdString(std::to_string(uncorrectable)));
     };
 
 private:
@@ -109,7 +119,9 @@ Q_OBJECT
     QLabel *received_packet_label = nullptr;
     QLabel *lost_packet_label = nullptr;
     QProgressBar *relative_loss_progressbar = nullptr;
-
+    QLabel *relative_loss_label = nullptr;
+    QLabel *corrected_packet_label = nullptr;
+    QLabel *uncorrectable_packet_label = nullptr;
 };
 
 struct rtsp_player::jpeg_player::log_widget : QDockWidget {

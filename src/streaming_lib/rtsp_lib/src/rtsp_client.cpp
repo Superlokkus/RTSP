@@ -178,6 +178,7 @@ void rtsp::rtsp_client::header_read(const boost::system::error_code &error, std:
         ++stream_it;
 
     auto begin = parser_buffer_.cbegin(), end = parser_buffer_.cend();
+    this->log_handler_(parser_buffer_);
     bool valid = qi::parse(begin, end, response_grammar, response);
 
     if (!valid)
