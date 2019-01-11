@@ -15,6 +15,9 @@
 #include <QTextEdit>
 #include <QErrorMessage>
 #include <QProgressBar>
+#include <QCheckBox>
+#include <QDoubleSpinBox>
+#include <QSpinBox>
 
 #include <boost/log/trivial.hpp>
 
@@ -88,11 +91,26 @@ struct rtsp_player::jpeg_player::settings_widget : QDockWidget {
         uncorrectable_packet_label = new QLabel();
         form_layout->addRow(tr("&Uncorrectable packets:"), uncorrectable_packet_label);
 
+        mkn_options = new QCheckBox();
+        form_layout->addRow(tr("&Enable FEC options:"), mkn_options);
+        connect(mkn_options, SIGNAL(stateChanged(int)), this, SLOT(fec_options_state_changed(int)));
+        bernoulli_p_dbox = new QDoubleSpinBox();
+        this->bernoulli_p_dbox->setEnabled(false);
+        form_layout->addRow(tr("&Server packet loss:"), bernoulli_p_dbox);
+        fec_k_box = new QSpinBox();
+        this->fec_k_box->setEnabled(false);
+        form_layout->addRow(tr("&FEC k:"), fec_k_box);
+
         this->setWidget(inside_widget);
     }
 
     std::string get_current_url() const {
         return this->host_line_edit->text().toStdString();
+    }
+
+    std::tuple<bool, double, uint16_t> get_mkn_options() const {
+        return std::forward_as_tuple(this->mkn_options->checkState(), this->bernoulli_p_dbox->value(),
+                                     static_cast<uint16_t>(this->fec_k_box->value()));
     }
 
 public slots:
@@ -112,6 +130,11 @@ public slots:
         this->uncorrectable_packet_label->setText(QString::fromStdString(std::to_string(uncorrectable)));
     };
 
+    void fec_options_state_changed(int state) {
+        this->bernoulli_p_dbox->setEnabled(state);
+        this->fec_k_box->setEnabled(state);
+    }
+
 private:
 Q_OBJECT
 
@@ -122,6 +145,9 @@ Q_OBJECT
     QLabel *relative_loss_label = nullptr;
     QLabel *corrected_packet_label = nullptr;
     QLabel *uncorrectable_packet_label = nullptr;
+    QCheckBox *mkn_options = nullptr;
+    QDoubleSpinBox *bernoulli_p_dbox = nullptr;
+    QSpinBox *fec_k_box = nullptr;
 };
 
 struct rtsp_player::jpeg_player::log_widget : QDockWidget {
@@ -242,6 +268,7 @@ void rtsp_player::jpeg_player::create_new_rtsp_client_() {
                     Q_ARG(unsigned long long, uncorrectable)
             );
         });
+
     } catch (std::exception &e) {
         auto error_message = new QErrorMessage(this);
         error_message->showMessage(QString{e.what()}, "setup failure");
@@ -250,6 +277,12 @@ void rtsp_player::jpeg_player::create_new_rtsp_client_() {
 
 void rtsp_player::jpeg_player::setup() {
     this->create_new_rtsp_client_();
+    const auto mkn_options = this->pimpl->settings_widget_.get_mkn_options();
+    if (std::get<0>(mkn_options)) {
+        this->pimpl->rtsp_client_->set_mkn_options(std::get<0>(mkn_options), std::get<1>(mkn_options),
+                                                   std::get<2>(mkn_options),
+                                                   1);
+    }
     this->pimpl->rtsp_client_->setup();
 }
 

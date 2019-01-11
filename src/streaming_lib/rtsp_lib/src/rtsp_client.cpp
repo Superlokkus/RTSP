@@ -11,7 +11,6 @@
 #include <boost/spirit/include/support_multi_pass.hpp>
 
 #include <rtsp_message.hpp>
-#include <rtsp_headers.hpp>
 
 rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_client::jpeg_frame)> frame_handler,
                                std::function<void(std::exception &)> error_handler,
@@ -215,6 +214,14 @@ void rtsp::rtsp_client::header_read(const boost::system::error_code &error, std:
                                   )));
 }
 
+void rtsp::rtsp_client::set_mkn_options(bool general_switch, double bernoulli_p, uint16_t fec_k, uint16_t fec_p) {
+    if (!general_switch) {
+        this->mkn_option_.reset();
+        return;
+    }
+    this->mkn_option_ = rtsp::headers::mkn_option_parameters{bernoulli_p, fec_k, fec_p};
+}
+
 void rtsp::rtsp_client::setup() {
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
         auto send_setup_request = [this]() {
@@ -241,6 +248,18 @@ void rtsp::rtsp_client::setup() {
                                   {
                                           {"Transport", std::move(transport_string)}
                                   }};
+            if (this->mkn_option_) {
+                request.headers.emplace_back("Require", rtsp::headers::mkn_option_tag);
+                std::string mkn_option_string{};
+                rtsp::headers::generate_mkn_bernoulli_channel_parameter_grammar<std::back_insert_iterator<std::string>>
+                        gen_grammar{};
+                bool success = boost::spirit::karma::generate(std::back_inserter(mkn_option_string),
+                                                              gen_grammar, *this->mkn_option_);
+                if (!success)
+                    throw std::logic_error{"Could not generate rtsp mln option string"};
+                request.headers.emplace_back(rtsp::headers::mkn_option_header, std::move(mkn_option_string));
+            }
+
             this->send_request(std::move(request), [this](rtsp::response response) {
                 if (response.status_code < 200 || response.status_code >= 300) {
                     throw std::runtime_error(std::string("Got non ok status code: ") +

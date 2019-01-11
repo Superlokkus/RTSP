@@ -33,6 +33,16 @@ struct rtsp_client_pimpl final {
      */
     void set_rtp_statistics_handler(std::function<void(uint64_t, uint64_t, uint64_t, uint64_t)> rtp_statistics_handler);
 
+    /*! @brief Tells the server via the "net.markusklemm.options" RTSP option at setup, to simulate channel loss and
+     * send FEC XOR packets
+     *
+     * @param general_switch Set to whenever use the option, if false, ignores the other parameters
+     * @param bernoulli_p Probability of packet loss
+     * @param fec_k
+     * @param fec_p
+     */
+    void set_mkn_options(bool general_switch, double bernoulli_p, uint16_t fec_k, uint16_t fec_p);
+
     void setup();
 
     void play();

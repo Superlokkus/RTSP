@@ -18,6 +18,7 @@
 #include <rtsp_session.hpp>
 #include <rtsp_definitions.hpp>
 #include <rtp_endsystem.hpp>
+#include <rtsp_headers.hpp>
 
 namespace rtsp {
 
@@ -46,6 +47,16 @@ public:
                                     rtp_statistics_handler);
 
     ~rtsp_client();
+
+    /*! @brief Tells the server via the "net.markusklemm.options" RTSP option at setup, to simulate channel loss and
+ * send FEC XOR packets
+ *
+ * @param general_switch Set to whenever use the option, if false, ignores the other parameters
+ * @param bernoulli_p Probability of packet loss
+ * @param fec_k
+ * @param fec_p
+ */
+    void set_mkn_options(bool general_switch, double bernoulli_p, uint16_t fec_k, uint16_t fec_p);
 
     void setup();
 
@@ -85,6 +96,7 @@ private:
     std::unordered_map<rtsp::cseq, std::function<void(rtsp::response)>> outstanding_requests_;
     boost::asio::streambuf in_streambuf_;
     std::string parser_buffer_;
+    boost::optional<rtsp::headers::mkn_option_parameters> mkn_option_;
 
     std::unique_ptr<rtp::unicast_jpeg_rtp_receiver> rtp_receiver_;
 

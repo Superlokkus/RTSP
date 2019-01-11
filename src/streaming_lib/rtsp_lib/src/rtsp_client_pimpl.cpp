@@ -27,6 +27,10 @@ void rtsp::rtsp_client_pimpl::set_rtp_statistics_handler(std::function<void(uint
     });
 }
 
+void rtsp::rtsp_client_pimpl::set_mkn_options(bool general_switch, double bernoulli_p, uint16_t fec_k, uint16_t fec_p) {
+    this->rtsp_client_->set_mkn_options(general_switch, bernoulli_p, fec_k, fec_p);
+}
+
 void rtsp::rtsp_client_pimpl::setup() {
     this->rtsp_client_->setup();
 }
