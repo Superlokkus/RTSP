@@ -37,7 +37,8 @@ RTP
 - The RTP timestamp is in units of 90000Hz. 
 - JPEG: Image = 1>= Passes/Frame >=1 Scans >=1 Components <=4
 - First five octets == Framelength in octets in ASCII excluding the 5 size octets
-
+- The initial value of the timestamp SHOULD be random, as for the
+        sequence number.
 Receiver
 ---------
 - s->probation is set to the number of

@@ -46,10 +46,10 @@ private:
 
     static const uint8_t payload_type_number{26u};
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
-    using frame_counter_t = uint_fast16_t;
-    static constexpr frame_counter_t frame_absolute_count{500u};//!<ms Should be read from jpeg headers I guess
 
-    void send_next_packet_handler(const boost::system::error_code &error, frame_counter_t current_frame);
+    uint16_t current_sequence_number{1337};//Chosen by fair dice roll
+
+    void send_next_packet_handler(const boost::system::error_code &error);
 };
 
 /*! @brief RTP receiver algorithms and metrics derived from RFC appendix reference implementation
@@ -83,6 +83,10 @@ public:
 
     uint32_t received_packets() const {
         return this->received;
+    }
+
+    uint16_t highest_seq_seen() const {
+        return max_seq;
     }
 
 private:

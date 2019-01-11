@@ -30,7 +30,8 @@ cmake -D"BOOST_ROOT"="~" -D"BOOST_LIBRARYDIR"="~/lib" -DCMAKE_BUILD_TYPE=Release
 ```
 
 #Known Issues:
-RTSP server could try to send on boost asio tcp socket, when messages are coming in to quick
+- RTSP server could try to send on boost asio tcp socket, when messages are coming in to quick
 Can be solved by a out queue in the rtsp server tcp connection
+- RTP source should switch from a code time random seq/timestamp to runtime random
 
 
