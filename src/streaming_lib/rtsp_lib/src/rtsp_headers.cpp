@@ -22,3 +22,9 @@ struct rtsp::headers::transport_grammar<std::string::const_iterator>;
 template
 struct rtsp::headers::generate_transport_header_grammar<std::back_insert_iterator<std::string>>;
 
+template
+struct rtsp::headers::mkn_bernoulli_channel_parameter_grammar<std::string::const_iterator>;
+
+template
+struct rtsp::headers::generate_mkn_bernoulli_channel_parameter_grammar<std::back_insert_iterator<std::string>>;
+

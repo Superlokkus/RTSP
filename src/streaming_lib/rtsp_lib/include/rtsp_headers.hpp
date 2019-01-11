@@ -13,6 +13,7 @@
 
 #include <boost/spirit/include/karma.hpp>
 #include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/phoenix.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 
@@ -59,6 +60,14 @@ struct transport {
 
     std::vector<transport_spec> specifications;
 };
+
+struct mkn_option_parameters {
+    double bernoulli_p;
+    uint16_t fec_k;
+    uint16_t fec_p;
+};
+const string mkn_option_tag{"net.markusklemm.options"};
+const string mkn_option_header{"net.markusklemm.options"};
 }
 }
 
@@ -80,6 +89,13 @@ BOOST_FUSION_ADAPT_STRUCT(
                 (rtsp::string, profile)
                 (boost::optional<rtsp::string>, lower_transport)
                 (std::vector<rtsp::headers::transport::transport_spec::parameter>, parameters)
+)
+
+BOOST_FUSION_ADAPT_STRUCT(
+        rtsp::headers::mkn_option_parameters,
+        (double, bernoulli_p)
+                (uint16_t, fec_k)
+                (uint16_t, fec_p)
 )
 
 namespace rtsp {
@@ -156,7 +172,25 @@ struct common_rules : rtsp::common_rules<Iterator> {
                                 >> *(parameter_)
     };
 
+    boost::spirit::qi::rule<Iterator, std::vector<string>()> require_{
+            +rtsp::common_rules<Iterator>::token % boost::spirit::qi::lit(",")
+    };
 
+};
+
+template<typename Iterator>
+struct mkn_bernoulli_channel_parameter_grammar : boost::spirit::qi::grammar<Iterator,
+        mkn_option_parameters()>, common_rules<Iterator> {
+
+    mkn_bernoulli_channel_parameter_grammar() : mkn_bernoulli_channel_parameter_grammar::base_type(start) {
+        using namespace boost::spirit;
+
+        start %= qi::lit("bernoulli_p=") >> qi::double_[qi::_pass = (qi::_1 >= 0.0 && qi::_1 <= 1.0)]
+                                         >> qi::lit(";fec_k=") >> qi::uint_parser<uint16_t>() >> qi::lit(";fec_p=")
+                                         >> qi::uint_parser<uint16_t>();
+    }
+
+    boost::spirit::qi::rule<Iterator, mkn_option_parameters()> start;
 };
 
 template<typename Iterator>
@@ -275,6 +309,23 @@ struct generate_transport_header_grammar : boost::spirit::karma::grammar<OutputI
     }
 
     boost::spirit::karma::rule<OutputIterator, rtsp::headers::transport()> start;
+};
+
+template<typename OutputIterator>
+struct generate_mkn_bernoulli_channel_parameter_grammar : boost::spirit::karma::grammar<OutputIterator,
+        mkn_option_parameters()>, transport_generators<OutputIterator> {
+    generate_mkn_bernoulli_channel_parameter_grammar() :
+            generate_mkn_bernoulli_channel_parameter_grammar::base_type(start) {
+        namespace karma = boost::spirit::karma;
+
+        start = karma::lit("bernoulli_p=") << karma::double_
+                                           << karma::lit(";fec_k=") << karma::uint_generator<uint16_t>()
+                                           << karma::lit(";fec_p=") << karma::uint_generator<uint16_t>();
+
+
+    }
+
+    boost::spirit::karma::rule<OutputIterator, mkn_option_parameters()> start;
 };
 
 }

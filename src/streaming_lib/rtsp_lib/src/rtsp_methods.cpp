@@ -129,8 +129,57 @@ std::pair<rtsp::response, rtsp::body> rtsp::methods::setup(rtsp::rtsp_server_ses
                                                            boost::asio::io_context &io_context) {
     rtsp::response response{common_response_sekeleton(session, request)};
 
-    rtsp::headers::transport request_transport{};
+    boost::optional<headers::mkn_option_parameters> options{};
+    if (request.second.count("require")) {
+        std::vector<string> option_tags;
+        namespace qi = boost::spirit::qi;
+        rtsp::headers::common_rules<std::string::const_iterator> rules{};
+        auto begin = request.second.at("require").cbegin();
+        auto end = request.second.at("require").cend();
+        qi::phrase_parse(begin, end, rules.require_, boost::spirit::ascii::space, option_tags);
+        if (begin != end) {
+            response.status_code = 400;
+            response.reason_phrase = rtsp::string{"Bad Request: Could not read transport header after"} +
+                                     rtsp::string{begin, end};
+            return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+        }
 
+        std::vector<string> unsupported_option_tags;
+        std::copy_if(option_tags.begin(), option_tags.end(), std::back_inserter(unsupported_option_tags),
+                     [](const auto &option_tag) -> bool {
+                         return option_tag != headers::mkn_option_tag;
+                     });
+
+        if (!unsupported_option_tags.empty()) {
+            response.status_code = 551;
+            response.reason_phrase = "Option not supported";
+            for (const auto &option_tag : unsupported_option_tags) {
+                response.headers.emplace_back("Unsupported", option_tag);
+            }
+            return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+        }
+        if (request.second.count(headers::mkn_option_header) == 0) {
+            response.status_code = 400;
+            response.reason_phrase = headers::mkn_option_header + " header missing";
+            return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+        }
+
+        begin = request.second.at(headers::mkn_option_header).cbegin();
+        end = request.second.at(headers::mkn_option_header).cend();
+        headers::mkn_option_parameters opt{};
+        rtsp::headers::mkn_bernoulli_channel_parameter_grammar<std::string::const_iterator> grammar{};
+        qi::parse(begin, end, grammar, opt);
+        if (begin != end) {
+            response.status_code = 400;
+            response.reason_phrase = rtsp::string{"Bad Request: Could not read "}
+                                     + headers::mkn_option_header + " header after" +
+                                     rtsp::string{begin, end};
+            return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
+        }
+        options = opt;
+    }
+
+    rtsp::headers::transport request_transport{};
 
     if (request.second.count("transport")) {
         rtsp::headers::transport_grammar<std::string::const_iterator> transport_grammar{};
