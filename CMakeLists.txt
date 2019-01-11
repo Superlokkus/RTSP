@@ -7,7 +7,7 @@ set(TEST_ENABLED TRUE CACHE BOOL "Tests are enabled")
 set(PROJECT_RESSOURCE_DIR ${CMAKE_SOURCE_DIR}/res)
 
 ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
-find_package(Boost COMPONENTS log system thread REQUIRED)
+find_package(Boost 1.66 COMPONENTS log system thread REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 
 if (${TEST_ENABLED})

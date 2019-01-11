@@ -11,10 +11,22 @@ Beleg Videostreaming für das Modul Internettechnologien 2
 ##[Implementation notes](doc/notes.md)
 
 #Building
+##Dependencies
 To build this project following libraries are needed
 *   Boost >= 1.66
 *   Qt >= 4.8
+Qt 4.8 is installed on ilux150 so build boost and install it to home one could use 
+```
+cd /tmp/
+git clone git@github.com:boostorg/boost.git
+cd boost/
+git submodule update  --init --recursive
+./bootstrap.sh --prefix=$HOME
+./b2 
+./b2 install
+```
 
+##Project
 Building is done via cmake.
 So after cloning one could for example
 ```
