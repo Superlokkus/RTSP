@@ -172,7 +172,7 @@ std::pair<rtsp::response, rtsp::body> rtsp::methods::setup(rtsp::rtsp_server_ses
         if (begin != end) {
             response.status_code = 400;
             response.reason_phrase = rtsp::string{"Bad Request: Could not read "}
-                                     + headers::mkn_option_header + " header after" +
+                                     + headers::mkn_option_header + " header after " +
                                      rtsp::string{begin, end};
             return std::make_pair<rtsp::response, rtsp::body>(std::move(response), {});
         }
@@ -225,14 +225,24 @@ std::pair<rtsp::response, rtsp::body> rtsp::methods::setup(rtsp::rtsp_server_ses
                     port_numbers);
     const auto &ssrc = boost::get<headers::transport::transport_spec::ssrc>(choosen_transport.value().parameters.at(2));
 
-    session.rtp_session = std::make_unique<rtp::unicast_jpeg_rtp_sender>(
-            boost::asio::ip::udp::endpoint{session.last_seen_request_address, client_port},
-            server_port,
-            ssrc,
-            std::move(ressource_path),
-            io_context
-    );
-
+    if (options) {
+        session.rtp_session = std::make_unique<rtp::unicast_jpeg_rtp_sender>(
+                boost::asio::ip::udp::endpoint{session.last_seen_request_address, client_port},
+                server_port,
+                ssrc,
+                std::move(ressource_path),
+                io_context,
+                options->bernoulli_p
+        );
+    } else {
+        session.rtp_session = std::make_unique<rtp::unicast_jpeg_rtp_sender>(
+                boost::asio::ip::udp::endpoint{session.last_seen_request_address, client_port},
+                server_port,
+                ssrc,
+                std::move(ressource_path),
+                io_context
+        );
+    }
     session.set_session_state(rtsp_server_session::state::ready);
     rtsp::headers::transport response_transport{};
     response_transport.specifications.push_back(choosen_transport.value());

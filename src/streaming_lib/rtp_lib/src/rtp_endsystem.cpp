@@ -19,13 +19,24 @@ rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endp
         send_packet_timer_(io_context_),
         ssrc_(ssrc),
         strand_(io_context_),
-        destination_(std::move(destination)) {
+        destination_(std::move(destination)),
+        re_(std::random_device()()) {
     BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_sender to " <<
                              this->destination_ << " from " << this->socket_.local_endpoint();
     this->jpeg_source_->unsetf(std::ios::skipws);
+    this->current_sequence_number = std::uniform_int_distribution<uint16_t>(0u, 60000u)(this->re_);
     boost::asio::socket_base::send_buffer_size option(65536u);
     socket_.set_option(option);
+}
 
+rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
+                                                      uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
+                                                      boost::asio::io_context &io_context,
+                                                      double channel_simulation_droprate) :
+        unicast_jpeg_rtp_sender(std::move(destination),
+                                source_port, ssrc, std::move(jpeg_source), io_context) {
+    BOOST_LOG_TRIVIAL(debug) << "And unicast_jpeg_rtp_sender with channel droprate of " << channel_simulation_droprate;
+    this->channel_failure_distribution_ = std::bernoulli_distribution{channel_simulation_droprate};
 }
 
 rtp::unicast_jpeg_rtp_sender::~unicast_jpeg_rtp_sender() {
@@ -104,14 +115,18 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
     rtp::packet::custom_jpeg_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
     boost::spirit::karma::generate(std::back_inserter(*buffer), gen_grammar, packet);
 
-    this->socket_.async_send_to(boost::asio::buffer(*buffer), this->destination_,
-                                std::bind([](const boost::system::error_code &error, std::size_t bytes_transferred,
-                                             auto buffer) {
-                                    if (error)
-                                        throw std::runtime_error{error.message()};
-                                    if (bytes_transferred != buffer->size())
-                                        throw std::runtime_error{"Couldn't send complete rtp packet"};
-                                }, std::placeholders::_1, std::placeholders::_2, buffer));
+    if (!this->channel_failure_distribution_ || !this->channel_failure_distribution_->operator()(re_)) {
+        this->socket_.async_send_to(boost::asio::buffer(*buffer), this->destination_,
+                                    std::bind([](const boost::system::error_code &error, std::size_t bytes_transferred,
+                                                 auto buffer) {
+                                        if (error)
+                                            throw std::runtime_error{error.message()};
+                                        if (bytes_transferred != buffer->size())
+                                            throw std::runtime_error{"Couldn't send complete rtp packet"};
+                                    }, std::placeholders::_1, std::placeholders::_2, buffer));
+    } else {
+        //BOOST_LOG_TRIVIAL(trace) << "Not sending rtp sequence number " << current_sequence_number;
+    }
 
 
     current_sequence_number += 1;

@@ -11,6 +11,7 @@
 #include <istream>
 #include <atomic>
 #include <deque>
+#include <random>
 
 #include <boost/asio.hpp>
 #include <boost/optional.hpp>
@@ -26,6 +27,10 @@ public:
     unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
                             uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
                             boost::asio::io_context &io_context);
+
+    unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
+                            uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
+                            boost::asio::io_context &io_context, double channel_simulation_droprate);
 
     ~unicast_jpeg_rtp_sender();
 
@@ -47,7 +52,12 @@ private:
     static const uint8_t payload_type_number{26u};
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
 
-    uint16_t current_sequence_number{1337};//Chosen by fair dice roll
+    std::default_random_engine re_;
+
+    boost::optional<std::bernoulli_distribution> channel_failure_distribution_; ///< Prob of loss
+
+
+    uint16_t current_sequence_number;
 
     void send_next_packet_handler(const boost::system::error_code &error);
 };

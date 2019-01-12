@@ -138,7 +138,7 @@ private:
     boost::asio::streambuf in_streambuf_;
     server::rtsp_server_state &server_state_;
     std::string last_response_string_;
-    const std::chrono::seconds timeout_period_{60u};
+    const std::chrono::seconds timeout_period_{240u};
     std::atomic<std::chrono::steady_clock::time_point> last_request_time_point_;
     boost::asio::steady_timer timeout_timer_;
 };
