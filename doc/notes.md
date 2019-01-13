@@ -62,4 +62,19 @@ Receiver
      by an extended dropout or a source restart.  Since multiple complete
      sequence number cycles may have been missed, the packet loss
      statistics are reset.
+     
+FEC
+===
+- RFC 5109 
+
+- offset mask
+        m(k) for each protection level k. If the bit i in the mask m(k) is
+                                             set to 1, then media packet number N + i is protected by this FEC
+                                             packet at level k.
+- N is called the sequence number base
+- The amount of data that is protected at
+        level k is indicated by L(k)
+- The protection length, offset mask, payload type, and sequence number
+     base fully identify the parity code applied to generate the FEC
+     packet with little overhead. 
 

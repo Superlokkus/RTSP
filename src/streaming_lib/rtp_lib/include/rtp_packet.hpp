@@ -9,6 +9,7 @@
 #include <vector>
 #include <algorithm>
 #include <array>
+#include <utility>
 
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/karma.hpp>
@@ -47,6 +48,31 @@ struct custom_jpeg_payload_header : header<custom_jpeg_payload_header> {
 struct custom_jpeg_packet {
     custom_jpeg_payload_header header;
     std::vector<uint8_t> data;
+};
+
+struct custom_fec_header : header<custom_fec_header> {
+    bool extension_flag{false}; //!<e
+    bool long_mask_flag{}; //!<l
+    bool p_recovery_field{};
+    bool x_recovery_field{};
+    uint_fast8_t cc_recovery_field{};
+    bool m_recovery_field{};
+    uint_fast8_t pt_recovery_field{};
+    uint16_t sn_base_field{};
+    uint32_t ts_recovery_field{};
+    uint16_t length_recovery_field{};
+};
+
+struct custom_fec_level_header {
+    uint16_t protection_length_field{};
+    uint64_t mask_field{};
+};
+
+struct custom_fec_packet {
+    custom_fec_header header;
+    using fec_payload = std::vector<uint8_t>;
+    using fec_level = std::pair<custom_fec_level_header, fec_payload>;
+    std::vector<fec_level> levels;
 };
 
 namespace ns = ::boost::spirit::standard;
@@ -204,6 +230,132 @@ struct custom_jpeg_packet_generator {
 
         for (auto octet : packet.data)
             karma::generate(sink, karma::byte_, octet);
+
+        return true;
+    }
+};
+
+/*! @brief Follows the Boost parser concept
+ *
+ * @tparam Iterator Forward Iterator
+ */
+template<typename Iterator>
+struct custom_fec_packet_grammar {
+    struct parser_id;
+
+    custom_fec_packet_grammar() = default;
+
+    template<typename Context, typename Skipper, typename Attribute>
+    bool parse(Iterator &begin, Iterator end, const Context &, const Skipper &, Attribute &packet) const {
+        if (begin == end)
+            return false;
+        if (begin + 3 * 4 > end)
+            return false;
+
+        namespace qi = boost::spirit::qi;
+
+        uint8_t octet_buffer{};
+        Iterator old_begin = begin;
+
+        qi::parse(begin, end, qi::byte_, octet_buffer);
+
+        packet.header.version = (octet_buffer & 0b11000000) >> 6;
+        if (packet.header.version != 2)
+            return false;
+        packet.header.padding_set = (octet_buffer & 0b00100000) >> 5;
+        packet.header.extension_bit = (octet_buffer & 0b00010000) >> 4;
+        packet.header.csrc = octet_buffer & 0x0F;
+
+        octet_buffer = 0;
+        qi::parse(begin, end, qi::byte_, octet_buffer);
+
+        packet.header.marker = (octet_buffer & 0b10000000) >> 7;
+        packet.header.payload_type_field = (octet_buffer & 0b01111111);
+
+        qi::parse(begin, end, qi::big_word, packet.header.sequence_number);
+        qi::parse(begin, end, qi::big_dword, packet.header.timestamp);
+        qi::parse(begin, end, qi::big_dword, packet.header.ssrc);
+
+        if (begin + 4 * packet.header.csrc > end)
+            return false;
+        for (unsigned i = 0; i < packet.header.csrc; ++i) {
+            uint32_t csrc{};
+            qi::parse(begin, end, qi::big_dword, csrc);
+            packet.header.csrcs.push_back(std::move(csrc));
+        }
+        if (packet.header.extension_bit) {
+            if (begin + 4 > end)
+                return false;
+            packet.header.header_extension.clear();
+            std::array<uint8_t, 4> header_extension_header{};
+            uint16_t header_extension_length{};
+            std::copy_n(begin, 4, header_extension_header.begin());
+            std::advance(begin, 4);
+            qi::parse(begin, end, qi::big_word, header_extension_length);
+            packet.header.header_extension.reserve(4 + 4 * header_extension_length);
+            std::copy(header_extension_header.begin(), header_extension_header.end(),
+                      std::back_inserter(packet.header.header_extension));
+            if (begin + 4 * header_extension_length > end)
+                return false;
+            std::copy_n(begin, 4 * header_extension_length, std::back_inserter(packet.header.header_extension));
+            std::advance(begin, 4 * header_extension_length);
+        }
+
+        //FEC
+        if (begin + 10 > end)
+            return false;
+
+        qi::parse(begin, end, qi::byte_, octet_buffer);
+
+        return true;
+    }
+
+    template<typename Context, typename Iterator_>
+    struct attribute {
+        typedef custom_fec_packet type;
+    };
+
+
+private:
+
+};
+
+template<typename OutputIterator>
+struct custom_fec_packet_generator {
+    struct generator_id;
+    typedef boost::mpl::int_<boost::spirit::karma::generator_properties::no_properties> properties;
+    template<typename Context>
+    struct attribute {
+        typedef custom_fec_packet type;
+    };
+
+    template<typename Sink, typename Context, typename Delimiter, typename Attribute>
+    bool generate(Sink &sink, Context &, Delimiter const &delim, Attribute const &packet) const {
+        namespace karma = boost::spirit::karma;
+
+        if (packet.header.version != 2u)
+            return false;
+        uint8_t octet_buffer{};
+        octet_buffer |= packet.header.version << 6;
+        octet_buffer |= packet.header.padding_set << 5;
+        octet_buffer |= packet.header.extension_bit << 4;
+        octet_buffer |= packet.header.csrc;
+        karma::generate(sink, karma::byte_, octet_buffer);
+
+        octet_buffer = 0u;
+        octet_buffer |= packet.header.marker << 7;
+        octet_buffer |= packet.header.payload_type_field;
+        karma::generate(sink, karma::byte_, octet_buffer);
+
+        karma::generate(sink, karma::big_word, packet.header.sequence_number);
+        karma::generate(sink, karma::big_dword, packet.header.timestamp);
+        karma::generate(sink, karma::big_dword, packet.header.ssrc);
+
+        if (packet.header.csrc != packet.header.csrcs.size())
+            return false;
+        for (const auto &csrc : packet.header.csrcs)
+            karma::generate(sink, karma::big_dword, csrc);
+
 
         return true;
     }

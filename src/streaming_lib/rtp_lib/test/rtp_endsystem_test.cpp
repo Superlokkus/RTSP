@@ -151,4 +151,40 @@ BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
 
 }
 
+struct rtp_fec_packet_fixture {
+    std::vector<uint8_t> fec_packet
+            {0x80, 0x80, 0x00, 0x3E, 0x00, 0x00, 0x09, 0xB0, 0x00, 0x00, 0x00, 0x00};
+
+    std::vector<uint8_t>::const_iterator begin{};
+    std::vector<uint8_t>::const_iterator end{};
+    bool success{false};
+    rtp::packet::custom_fec_packet packet{};
+
+    rtp_fec_packet_fixture() {
+    }
+
+    void parse_phrase(const std::vector<uint8_t> &phrase) {
+        rtp::packet::custom_fec_packet_grammar<std::vector<uint8_t>::const_iterator> grammar{};
+        begin = phrase.cbegin();
+        end = phrase.cend();
+        success = boost::spirit::qi::parse(begin, end, grammar, packet);
+    }
+
+};
+
+BOOST_FIXTURE_TEST_SUITE(rtp_fec_packet_tests, rtp_fec_packet_fixture)
+
+BOOST_AUTO_TEST_CASE(RTP_FEC_Header) {
+    parse_phrase(fec_packet);
+}
+
+BOOST_AUTO_TEST_CASE(RTP_likely_header_generation) {
+    rtp::packet::custom_fec_packet packet{};
+    std::vector<uint8_t> output;
+    rtp::packet::custom_fec_packet_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
+    const bool success = boost::spirit::karma::generate(std::back_inserter(output), gen_grammar, packet);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()
