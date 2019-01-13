@@ -32,11 +32,14 @@ rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endp
 rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
                                                       uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
                                                       boost::asio::io_context &io_context,
-                                                      double channel_simulation_droprate) :
+                                                      double channel_simulation_droprate,
+                                                      uint16_t fec_k) :
         unicast_jpeg_rtp_sender(std::move(destination),
                                 source_port, ssrc, std::move(jpeg_source), io_context) {
-    BOOST_LOG_TRIVIAL(debug) << "And unicast_jpeg_rtp_sender with channel droprate of " << channel_simulation_droprate;
+    BOOST_LOG_TRIVIAL(debug) << "And unicast_jpeg_rtp_sender with channel droprate of " << channel_simulation_droprate
+                             << " and fec_k of " << fec_k;
     this->channel_failure_distribution_ = std::bernoulli_distribution{channel_simulation_droprate};
+    this->fec_generator_ = fec_generator{fec_k, ssrc_};
 }
 
 rtp::unicast_jpeg_rtp_sender::~unicast_jpeg_rtp_sender() {
@@ -126,6 +129,22 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
                                     }, std::placeholders::_1, std::placeholders::_2, buffer));
     } else {
         //BOOST_LOG_TRIVIAL(trace) << "Not sending rtp sequence number " << current_sequence_number;
+    }
+
+    if (this->fec_generator_) {
+        auto fec_packet_buffer = this->fec_generator_->generate_next_fec_packet(*buffer);
+        if (fec_packet_buffer &&
+            (!this->channel_failure_distribution_ || !this->channel_failure_distribution_->operator()(re_))) {
+            this->socket_.async_send_to(boost::asio::buffer(*fec_packet_buffer), this->destination_,
+                                        std::bind([](const boost::system::error_code &error,
+                                                     std::size_t bytes_transferred,
+                                                     auto buffer) {
+                                            if (error)
+                                                throw std::runtime_error{error.message()};
+                                            if (bytes_transferred != buffer->size())
+                                                throw std::runtime_error{"Couldn't send complete fec rtp packet"};
+                                        }, std::placeholders::_1, std::placeholders::_2, fec_packet_buffer));
+        }
     }
 
 
@@ -361,3 +380,37 @@ int rtp::rtp_receiver_squence_utility::update_seq(uint16_t seq) {
     return 1;
 }
 
+rtp::fec_generator::fec_generator(uint16_t fec_k, uint32_t ssrc) :
+        fec_k_(fec_k), current_fec_k_(fec_k), ssrc_(ssrc) {
+}
+
+std::shared_ptr<std::vector<uint8_t>>
+rtp::fec_generator::generate_next_fec_packet(const std::vector<uint8_t> &media_packet) {
+    auto begin = this->fec_bit_string_.begin(), end = this->fec_bit_string_.end();
+    if (this->fec_bit_string_.empty()) {
+        std::copy_n(media_packet.begin(), 8u, std::back_inserter(this->fec_bit_string_));
+    } else {
+        std::transform(begin, begin + 8, media_packet.begin(), begin, [](auto a, auto b) -> uint8_t {
+            return a ^ b;
+        });
+    }
+
+    namespace karma = boost::spirit::karma;
+    if (this->fec_bit_string_.size() == 8) {
+        karma::generate(std::back_inserter(this->fec_bit_string_), karma::big_word, media_packet.size() - 12u);
+    } else {
+        std::array<uint8_t, 2> len;
+        karma::generate(len.begin(), karma::big_word, media_packet.size() - 12u);
+        std::transform(begin + 8, begin + 10, len.begin(), begin, [](auto a, auto b) -> uint8_t {
+            return a ^ b;
+        });
+    }
+
+    if (this->current_fec_k_-- <= 1) {
+        this->current_fec_k_ = this->fec_k_;
+        return std::shared_ptr<std::vector<uint8_t>>{};
+    }
+    auto packet = std::make_shared<std::vector<uint8_t>>();
+
+    return packet;
+}

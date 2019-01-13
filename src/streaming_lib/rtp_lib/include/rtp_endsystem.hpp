@@ -20,6 +20,20 @@
 
 namespace rtp {
 
+struct fec_generator {
+    fec_generator(uint16_t fec_k, uint32_t ssrc);
+
+    std::shared_ptr<std::vector<uint8_t>> generate_next_fec_packet(const std::vector<uint8_t> &media_packet);
+
+    static const uint8_t fec_payload_type_number{100u};
+private:
+    uint16_t fec_k_;
+    uint16_t current_fec_k_;
+    uint32_t ssrc_;
+    uint16_t current_sequence_number;
+    std::vector<uint8_t> fec_bit_string_;
+};
+
 class unicast_jpeg_rtp_sender final {
 public:
     unicast_jpeg_rtp_sender() = delete;
@@ -30,7 +44,8 @@ public:
 
     unicast_jpeg_rtp_sender(boost::asio::ip::udp::endpoint destination, uint16_t source_port,
                             uint32_t ssrc, std::unique_ptr<std::istream> jpeg_source,
-                            boost::asio::io_context &io_context, double channel_simulation_droprate);
+                            boost::asio::io_context &io_context, double channel_simulation_droprate,
+                            uint16_t fec_k);
 
     ~unicast_jpeg_rtp_sender();
 
@@ -50,11 +65,13 @@ private:
     std::atomic<bool> running_{false};
 
     static const uint8_t payload_type_number{26u};
+
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
 
     std::default_random_engine re_;
 
     boost::optional<std::bernoulli_distribution> channel_failure_distribution_; ///< Prob of loss
+    boost::optional<fec_generator> fec_generator_;
 
 
     uint16_t current_sequence_number;
