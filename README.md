@@ -10,6 +10,14 @@ Beleg Videostreaming für das Modul Internettechnologien 2
 
 ##[Implementation notes](doc/notes.md)
 
+#Execution
+##Client
+Execute the `rtsp_gui` executable in the build/bin directory
+##Server
+Execute the `rtsp_server_standalone` executable in the build/bin directory for default settings or
+for example `./rtsp_server_standalone 5054 ../res` in the build directory for port 5054 usage and using the project
+resource directory for providing the example movie.mjpeg
+
 #Building
 ##Dependencies
 To build this project following libraries are needed
