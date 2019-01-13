@@ -82,7 +82,9 @@ void rtsp::rtsp_client::process_url(const std::string &url) {
     bool parsed = qi::parse(url.cbegin(), url.cend(),
                             qi::omit[*ns::space]
                                     >> (ns::string("rtsp:") | ns::string("rtspu:"))
-                                    >> qi::lit("//") >> *(ns::alnum | ns::char_(".-"))
+                                    >> qi::lit("//") >> (*(ns::alnum | ns::char_(".-")) ||
+                                                         (qi::lit("[") >> *(ns::alnum | ns::char_(".:/"))
+                                                                       >> qi::lit("]")))
                                     >> -(qi::lit(":") >> qi::uint_parser<uint16_t, 10>())
                                     >> qi::lit("/") >> *ns::print,
                             method, host, port, remainder);

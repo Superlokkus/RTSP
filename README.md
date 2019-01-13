@@ -45,5 +45,6 @@ cmake -D"BOOST_ROOT"="~" -D"BOOST_LIBRARYDIR"="~/lib" -DCMAKE_BUILD_TYPE=Release
 - RTSP server could try to send on boost asio tcp socket, when messages are coming in to quick
 Can be solved by a out queue in the rtsp server tcp connection
 - RTSP require header handling for all methods/cleanup
+- RTSP Connection header handling
 
 
