@@ -11,6 +11,8 @@
 #include <boost/spirit/include/qi_match.hpp>
 #include <boost/spirit/include/support_multi_pass.hpp>
 
+#include <boost/log/trivial.hpp>
+
 struct rtsp::rtsp_server::tcp_connection : std::enable_shared_from_this<tcp_connection> {
     tcp_connection() = delete;
 
@@ -151,23 +153,19 @@ rtsp::rtsp_server::rtsp_server(boost::filesystem::path ressource_root,
           server_state_(io_context_, ressource_root_),
           work_guard_{boost::asio::make_work_guard(io_context_)},
           udp_v4_socket_{std::forward_as_tuple(
-                  boost::asio::ip::udp::socket{io_context_,
-                                               boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v4(),
-                                                                              port_number}},
+                  boost::asio::ip::udp::socket{io_context_},
                   boost::asio::io_context::strand{io_context_},
                   udp_buffer{},
                   boost::asio::ip::udp::endpoint{}
           )},
           udp_v6_socket_{std::forward_as_tuple(
-                  boost::asio::ip::udp::socket{io_context_,
-                                               boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(),
-                                                                              port_number}},
+                  boost::asio::ip::udp::socket{io_context_},
                   boost::asio::io_context::strand{io_context_},
                   udp_buffer{},
                   boost::asio::ip::udp::endpoint{}
           )},
-          tcp_v4_acceptor_{io_context_, boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v4(), port_number}},
-          tcp_v6_acceptor_{io_context_, boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v6(), port_number}},
+          tcp_v4_acceptor_{io_context_},
+          tcp_v6_acceptor_{io_context_},
           error_handler_{std::move(error_handler)} {
 
     if (!fileapi::exists(ressource_root_) || !fileapi::is_directory(ressource_root_))
@@ -181,6 +179,38 @@ rtsp::rtsp_server::rtsp_server(boost::filesystem::path ressource_root,
                         return std::thread{&rtsp_server::io_run_loop,
                                            std::ref(this->io_context_), std::ref(this->error_handler_)};
                     });
+
+    try {
+        std::get<0>(udp_v4_socket_) = boost::asio::ip::udp::socket{io_context_,
+                                                                   boost::asio::ip::udp::endpoint{
+                                                                           boost::asio::ip::udp::v4(),
+                                                                           port_number}};
+    } catch (boost::system::system_error &e) {
+        BOOST_LOG_TRIVIAL(error) << "Could not create UDP IPv4 socket: " << e.what();
+    }
+    try {
+        std::get<0>(udp_v6_socket_) = boost::asio::ip::udp::socket{io_context_,
+                                                                   boost::asio::ip::udp::endpoint{
+                                                                           boost::asio::ip::udp::v6(),
+                                                                           port_number}};
+    } catch (boost::system::system_error &e) {
+        BOOST_LOG_TRIVIAL(error) << "Could not create UDP IPv6 socket: " << e.what();
+    }
+    try {
+        tcp_v4_acceptor_ = boost::asio::ip::tcp::acceptor{io_context_,
+                                                          boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v4(),
+                                                                                         port_number}};
+    } catch (boost::system::system_error &e) {
+        BOOST_LOG_TRIVIAL(error) << "Could not create TCP IPv4 socket: " << e.what();
+        throw e;
+    }
+    try {
+        tcp_v6_acceptor_ = boost::asio::ip::tcp::acceptor{io_context_,
+                                                          boost::asio::ip::tcp::endpoint{boost::asio::ip::tcp::v6(),
+                                                                                         port_number}};
+    } catch (boost::system::system_error &e) {
+        BOOST_LOG_TRIVIAL(error) << "Could not create TCP IPv6 socket: " << e.what();
+    }
 
     this->start_async_receive(this->udp_v4_socket_);
     this->start_async_receive(this->udp_v6_socket_);
