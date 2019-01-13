@@ -288,8 +288,7 @@ struct custom_fec_packet_grammar {
     custom_fec_packet_grammar() = default;
 
     template<typename Context, typename Skipper, typename Attribute>
-    bool parse(Iterator &begin, Iterator end, const Context &, const Skipper &, Attribute &packet_t) const {
-        custom_fec_packet packet = packet_t;
+    bool parse(Iterator &begin, Iterator end, const Context &, const Skipper &, Attribute &packet) const {
         if (begin == end)
             return false;
         if (begin + 3 * 4 > end)
