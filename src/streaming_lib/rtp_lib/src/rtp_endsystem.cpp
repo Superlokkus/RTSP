@@ -151,13 +151,10 @@ rtp::unicast_jpeg_rtp_receiver::unicast_jpeg_rtp_receiver(uint16_t sink_port,
                 udp_buffer{},
                 boost::asio::ip::udp::endpoint{}
         )},
-        socket_v6_{std::forward_as_tuple(
-                boost::asio::ip::udp::socket{io_context_,
-                                             boost::asio::ip::udp::endpoint{boost::asio::ip::udp::v6(),
-                                                                            sink_port}},
-                boost::asio::io_context::strand{io_context_},
-                udp_buffer{},
-                boost::asio::ip::udp::endpoint{}
+        socket_v6_{std::forward_as_tuple(boost::asio::ip::udp::socket{io_context_},
+                                         boost::asio::io_context::strand{io_context_},
+                                         udp_buffer{},
+                                         boost::asio::ip::udp::endpoint{}
         )},
         frame_handler_(std::move(frame_handler)),
         ssrc_(ssrc),
@@ -165,6 +162,14 @@ rtp::unicast_jpeg_rtp_receiver::unicast_jpeg_rtp_receiver(uint16_t sink_port,
         display_next_frame_timer_(io_context_) {
     BOOST_LOG_TRIVIAL(debug) << "New unicast_jpeg_rtp_receiver from :" <<
                              sink_port << " with ssrc " << ssrc;
+    try {
+        std::get<0>(socket_v6_) = boost::asio::ip::udp::socket{io_context_,
+                                                               boost::asio::ip::udp::endpoint{
+                                                                       boost::asio::ip::udp::v6(),
+                                                                       sink_port}};
+    } catch (boost::system::system_error &e) {
+        BOOST_LOG_TRIVIAL(error) << "Could not create UDP IPv6 socket: " << e.what();
+    }
 
     boost::asio::dispatch(this->io_context_, boost::asio::bind_executor(this->strand_, [this]() {
         this->display_next_frame_timer_.expires_after(boost::asio::chrono::milliseconds(20));
