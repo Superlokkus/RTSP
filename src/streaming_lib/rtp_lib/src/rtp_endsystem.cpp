@@ -132,7 +132,7 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
     }
 
     if (this->fec_generator_) {
-        auto fec_packet_buffer = this->fec_generator_->generate_next_fec_packet(*buffer);
+        auto fec_packet_buffer = this->fec_generator_->generate_next_fec_packet(*buffer, current_sequence_number);
         if (fec_packet_buffer &&
             (!this->channel_failure_distribution_ || !this->channel_failure_distribution_->operator()(re_))) {
             this->socket_.async_send_to(boost::asio::buffer(*fec_packet_buffer), this->destination_,
@@ -385,32 +385,94 @@ rtp::fec_generator::fec_generator(uint16_t fec_k, uint32_t ssrc) :
 }
 
 std::shared_ptr<std::vector<uint8_t>>
-rtp::fec_generator::generate_next_fec_packet(const std::vector<uint8_t> &media_packet) {
+rtp::fec_generator::generate_next_fec_packet(const std::vector<uint8_t> &media_packet, uint16_t seq_num) {
+    auto f = [](uint8_t a, uint8_t b) -> uint8_t {
+        return a ^ b;
+    };
+
+    if (media_packet.size() < 12)
+        throw std::logic_error("Mediapacket size < 10");
+
+    if (this->fec_seq_base != 0) {
+        this->fec_seq_base = std::min(seq_num, this->fec_seq_base); //Account for wraparound?! how?! whole RTP logic?!
+    } else {
+        this->fec_seq_base = seq_num;
+    }
+
     auto begin = this->fec_bit_string_.begin(), end = this->fec_bit_string_.end();
     if (this->fec_bit_string_.empty()) {
         std::copy_n(media_packet.begin(), 8u, std::back_inserter(this->fec_bit_string_));
+        begin = this->fec_bit_string_.begin(), end = this->fec_bit_string_.end();
     } else {
-        std::transform(begin, begin + 8, media_packet.begin(), begin, [](auto a, auto b) -> uint8_t {
-            return a ^ b;
-        });
+        std::transform(begin, begin + 8, media_packet.begin(), begin, f);
     }
 
     namespace karma = boost::spirit::karma;
     if (this->fec_bit_string_.size() == 8) {
         karma::generate(std::back_inserter(this->fec_bit_string_), karma::big_word, media_packet.size() - 12u);
+        begin = this->fec_bit_string_.begin(), end = this->fec_bit_string_.end();
     } else {
         std::array<uint8_t, 2> len;
         karma::generate(len.begin(), karma::big_word, media_packet.size() - 12u);
-        std::transform(begin + 8, begin + 10, len.begin(), begin, [](auto a, auto b) -> uint8_t {
-            return a ^ b;
-        });
+        std::transform(begin + 8, begin + 10, len.begin(), begin + 8, f);
     }
 
-    if (this->current_fec_k_-- <= 1) {
-        this->current_fec_k_ = this->fec_k_;
+    if (media_packet.size() <= this->fec_bit_string_.size() - 2) {
+        std::transform(media_packet.begin() + 8, media_packet.end(), begin + 10, begin + 10, f);
+        std::transform(begin + 10 + media_packet.size() - 8, end, begin + 10 + media_packet.size() - 8, [](auto a) {
+            return a ^ 0u;
+        });
+    } else {
+        std::transform(begin + 10, end, media_packet.begin() + 8, begin + 10, f);
+        std::transform(media_packet.begin() + this->fec_bit_string_.size() - 2, media_packet.end(), std::back_inserter(
+                this->fec_bit_string_), [](auto a) {
+                           return a ^ 0u;
+                       }
+        );
+        begin = this->fec_bit_string_.begin(), end = this->fec_bit_string_.end();
+    }
+
+
+    if (this->current_fec_k_-- >= 1) {
         return std::shared_ptr<std::vector<uint8_t>>{};
     }
+    this->current_fec_k_ = this->fec_k_;
+
     auto packet = std::make_shared<std::vector<uint8_t>>();
+    auto inserter = std::back_inserter(*packet);
+    uint8_t octet_buffer{0u};
+    octet_buffer = *begin++ & 0b00111111;
+    if (this->fec_k_ > 16) {
+        octet_buffer |= 0b01000000;
+    }
+    *inserter++ = (octet_buffer);
+    *inserter++ = *begin++;
+
+    std::array<uint8_t, 2> sn_base;
+    karma::generate(sn_base.begin(), karma::big_word, this->fec_seq_base);
+    std::copy_n(begin, 2, inserter);
+    std::advance(begin, 2);
+    std::copy_n(begin, 6, inserter);
+    std::advance(begin, 6);
+
+    std::array<uint8_t, 2> protection_len;
+    karma::generate(protection_len.begin(), karma::big_word, this->fec_bit_string_.size() - 12);
+    std::copy(protection_len.begin(), protection_len.end(), inserter);
+
+    std::array<uint8_t, 6> mask;
+
+    for (unsigned u = 0; u < this->fec_k_; ++u) {
+        mask.at(u / 8u) |= 0b10000000 >> u % 8u;
+    }
+    if (this->fec_k_ > 16) {
+        std::copy(mask.begin(), mask.end(), inserter);
+    } else {
+        std::copy(mask.begin(), mask.begin() + 2, inserter);
+    }
+
+    std::copy(this->fec_bit_string_.begin() + 12, this->fec_bit_string_.end(), inserter);
+    this->fec_bit_string_.clear();
+
 
     return packet;
 }

@@ -23,15 +23,17 @@ namespace rtp {
 struct fec_generator {
     fec_generator(uint16_t fec_k, uint32_t ssrc);
 
-    std::shared_ptr<std::vector<uint8_t>> generate_next_fec_packet(const std::vector<uint8_t> &media_packet);
+    std::shared_ptr<std::vector<uint8_t>> generate_next_fec_packet(const std::vector<uint8_t> &media_packet,
+                                                                   uint16_t seq_num);
 
     static const uint8_t fec_payload_type_number{100u};
 private:
     uint16_t fec_k_;
     uint16_t current_fec_k_;
     uint32_t ssrc_;
-    uint16_t current_sequence_number;
+
     std::vector<uint8_t> fec_bit_string_;
+    uint16_t fec_seq_base{0u};
 };
 
 class unicast_jpeg_rtp_sender final {

@@ -233,7 +233,7 @@ std::pair<rtsp::response, rtsp::body> rtsp::methods::setup(rtsp::rtsp_server_ses
                 std::move(ressource_path),
                 io_context,
                 options->bernoulli_p,
-                options->fec_p
+                options->fec_k
         );
     } else {
         session.rtp_session = std::make_unique<rtp::unicast_jpeg_rtp_sender>(
