@@ -23,6 +23,9 @@ namespace rtp {
 struct fec_generator {
     fec_generator(uint16_t fec_k, uint32_t ssrc);
 
+    /*! @Generates the FEC header, fec level headers and payload (but not the rtp header)
+     *
+     */
     std::shared_ptr<std::vector<uint8_t>> generate_next_fec_packet(const std::vector<uint8_t> &media_packet,
                                                                    uint16_t seq_num);
 
@@ -77,6 +80,7 @@ private:
 
 
     uint16_t current_sequence_number;
+    uint16_t current_fec_sequence_number;
 
     void send_next_packet_handler(const boost::system::error_code &error);
 };
@@ -177,7 +181,10 @@ private:
 
     boost::optional<rtp_receiver_squence_utility> sequence_utility_;
 
-    std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_buffer_;
+    std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_frame_buffer_;
+
+    std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_incoming_buffer_;
+    std::deque<rtp::packet::custom_fec_packet> fec_packet_incoming_buffer_;
 
 
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess

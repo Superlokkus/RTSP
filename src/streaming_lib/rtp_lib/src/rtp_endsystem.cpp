@@ -25,6 +25,7 @@ rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endp
                              this->destination_ << " from " << this->socket_.local_endpoint();
     this->jpeg_source_->unsetf(std::ios::skipws);
     this->current_sequence_number = std::uniform_int_distribution<uint16_t>(0u, 60000u)(this->re_);
+    this->current_fec_sequence_number = std::uniform_int_distribution<uint16_t>(0u, 60000u)(this->re_);
     boost::asio::socket_base::send_buffer_size option(65536u);
     socket_.set_option(option);
 }
@@ -135,7 +136,17 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
         auto fec_packet_buffer = this->fec_generator_->generate_next_fec_packet(*buffer, current_sequence_number);
         if (fec_packet_buffer &&
             (!this->channel_failure_distribution_ || !this->channel_failure_distribution_->operator()(re_))) {
-            this->socket_.async_send_to(boost::asio::buffer(*fec_packet_buffer), this->destination_,
+            packet::standard_rtp_header rtp_header{};
+            rtp_header.sequence_number = this->current_fec_sequence_number++;
+            rtp_header.ssrc = this->ssrc_;
+            rtp_header.payload_type_field = 100u;
+            rtp_header.timestamp = packet.header.timestamp;
+            auto full_fec_packet = std::make_shared<std::vector<uint8_t>>();
+            packet::standard_rtp_header_generator<std::back_insert_iterator<std::vector<uint8_t>>> gen_grammar{};
+            boost::spirit::karma::generate(std::back_inserter(*full_fec_packet), gen_grammar, rtp_header);
+            std::move(fec_packet_buffer->begin(), fec_packet_buffer->end(), std::back_inserter(*full_fec_packet));
+
+            this->socket_.async_send_to(boost::asio::buffer(*full_fec_packet), this->destination_,
                                         std::bind([](const boost::system::error_code &error,
                                                      std::size_t bytes_transferred,
                                                      auto buffer) {
@@ -143,7 +154,7 @@ void rtp::unicast_jpeg_rtp_sender::send_next_packet_handler(const boost::system:
                                                 throw std::runtime_error{error.message()};
                                             if (bytes_transferred != buffer->size())
                                                 throw std::runtime_error{"Couldn't send complete fec rtp packet"};
-                                        }, std::placeholders::_1, std::placeholders::_2, fec_packet_buffer));
+                                        }, std::placeholders::_1, std::placeholders::_2, full_fec_packet));
         }
     }
 
@@ -275,16 +286,16 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
         });
     }
 
-    this->jpeg_packet_buffer_.push_back(std::move(jpeg_packet));
+    this->jpeg_packet_frame_buffer_.push_back(std::move(jpeg_packet));
 }
 
 void rtp::unicast_jpeg_rtp_receiver::display_next_frame_timer_handler(const boost::system::error_code &error) {
     if (error)
         throw std::runtime_error{error.message()};
 
-    if (!this->jpeg_packet_buffer_.empty()) {
-        this->frame_handler_(this->jpeg_packet_buffer_.front().data);
-        this->jpeg_packet_buffer_.pop_front();
+    if (!this->jpeg_packet_frame_buffer_.empty()) {
+        this->frame_handler_(this->jpeg_packet_frame_buffer_.front().data);
+        this->jpeg_packet_frame_buffer_.pop_front();
     }
 
     this->display_next_frame_timer_.expires_at(this->display_next_frame_timer_.expiry()
