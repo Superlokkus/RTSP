@@ -251,16 +251,28 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
                                                                  boost::asio::ip::udp::endpoint received_from_endpoint) {
     //BOOST_LOG_TRIVIAL(trace) << "Got new udp message in unicast_jpeg_rtp_receiver";
 
+    if (this->handle_new_jpeg_packet(*message)) {
+
+    } else if (this->handle_new_fec_packet(*message)) {
+
+    } else {
+        BOOST_LOG_TRIVIAL(trace) << "Got unparsable packet on RTP channel";
+    }
+
+
+    std::move(jpeg_packet_incoming_buffer_.begin(), jpeg_packet_incoming_buffer_.end(),
+              std::back_inserter(this->jpeg_packet_frame_buffer_));
+    jpeg_packet_incoming_buffer_.clear();
+}
+
+bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<char> &message) {
     rtp::packet::custom_jpeg_packet_grammar<std::vector<char>::const_iterator> custom_jpeg_grammar{};
-    auto begin = message->cbegin(), end = message->cend();
+    auto begin = message.cbegin(), end = message.cend();
 
     rtp::packet::custom_jpeg_packet jpeg_packet;
     auto success = boost::spirit::qi::parse(begin, end, custom_jpeg_grammar, jpeg_packet);
-
-    if (!success) {
-        BOOST_LOG_TRIVIAL(debug) << "Not parseable as jpeg packet";
-        return;
-    }
+    if (!success)
+        return false;
 
     if (jpeg_packet.header.ssrc != this->ssrc_) {
         throw std::runtime_error{"Got jpeg rtp packet with wrong ssrc, dropping"};
@@ -271,22 +283,45 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
         BOOST_LOG_TRIVIAL(error) << "Invalid jpeg data!";
     }
 
-    if (!sequence_utility_) { //First packet
-        sequence_utility_ = boost::make_optional<rtp_receiver_squence_utility>(jpeg_packet.header.sequence_number);
+    if (!jpeg_sequence_utility_) { //First packet
+        jpeg_sequence_utility_ = boost::make_optional<rtp_receiver_squence_utility>(jpeg_packet.header.sequence_number);
     }
-    if (sequence_utility_->update_seq(jpeg_packet.header.sequence_number) == 0) {
-        BOOST_LOG_TRIVIAL(trace) << "Sequence number invalid: " << jpeg_packet.header.sequence_number <<
-                                 "Expected " << sequence_utility_->highest_seq_seen();
+    if (jpeg_sequence_utility_->update_seq(jpeg_packet.header.sequence_number) == 0) {
+        BOOST_LOG_TRIVIAL(trace) << "JPEG Sequence number invalid: " << jpeg_packet.header.sequence_number <<
+                                 "Expected " << jpeg_sequence_utility_->highest_seq_seen();
     }
 
     if (this->statistics_handler_) {
-        this->statistics_handler_(statistics{this->sequence_utility_->received_packets(),
-                                             this->sequence_utility_->expected(),
+        this->statistics_handler_(statistics{this->jpeg_sequence_utility_->received_packets(),
+                                             this->jpeg_sequence_utility_->expected(),
                                              0, 0
         });
     }
 
-    this->jpeg_packet_frame_buffer_.push_back(std::move(jpeg_packet));
+    this->jpeg_packet_incoming_buffer_.push_back(std::move(jpeg_packet));
+    return true;
+}
+
+bool rtp::unicast_jpeg_rtp_receiver::handle_new_fec_packet(const std::vector<char> &message) {
+    auto begin = message.cbegin(), end = message.cend();
+    rtp::packet::custom_fec_packet fec_packet;
+    rtp::packet::custom_fec_packet_grammar<std::vector<char>::const_iterator> custom_fec_grammar{};
+    auto success = boost::spirit::qi::parse(begin, end, custom_fec_grammar, fec_packet);
+    if (!success)
+        return false;
+
+    if (fec_packet.header.ssrc != this->ssrc_) {
+        throw std::runtime_error{"Got fec rtp packet with wrong ssrc, dropping"};
+    }
+    if (!fec_sequence_utility_) { //First packet
+        fec_sequence_utility_ = boost::make_optional<rtp_receiver_squence_utility>(fec_packet.header.sequence_number);
+    }
+    if (fec_sequence_utility_->update_seq(fec_packet.header.sequence_number) == 0) {
+        BOOST_LOG_TRIVIAL(trace) << "FEC Sequence number invalid: " << fec_packet.header.sequence_number <<
+                                 "Expected " << fec_sequence_utility_->highest_seq_seen();
+    }
+    this->fec_packet_incoming_buffer_.push_back(std::move(fec_packet));
+    return true;
 }
 
 void rtp::unicast_jpeg_rtp_receiver::display_next_frame_timer_handler(const boost::system::error_code &error) {

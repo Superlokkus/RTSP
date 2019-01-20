@@ -179,7 +179,8 @@ private:
     boost::asio::io_context::strand strand_;
     boost::asio::steady_timer display_next_frame_timer_;
 
-    boost::optional<rtp_receiver_squence_utility> sequence_utility_;
+    boost::optional<rtp_receiver_squence_utility> jpeg_sequence_utility_;
+    boost::optional<rtp_receiver_squence_utility> fec_sequence_utility_;
 
     std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_frame_buffer_;
 
@@ -198,6 +199,10 @@ private:
     void handle_new_incoming_message(std::shared_ptr<std::vector<char>> message,
                                      shared_udp_socket &socket_received_from,
                                      boost::asio::ip::udp::endpoint received_from_endpoint);
+
+    bool handle_new_jpeg_packet(const std::vector<char> &message);
+
+    bool handle_new_fec_packet(const std::vector<char> &message);
 
     void display_next_frame_timer_handler(const boost::system::error_code &error);
 };
