@@ -259,10 +259,13 @@ void rtp::unicast_jpeg_rtp_receiver::handle_new_incoming_message(std::shared_ptr
         BOOST_LOG_TRIVIAL(trace) << "Got unparsable packet on RTP channel";
     }
 
+    if (this->statistics_handler_) {
+        this->statistics_handler_(statistics{this->jpeg_sequence_utility_->received_packets(),
+                                             this->jpeg_sequence_utility_->expected(),
+                                             this->corrected_, this->uncorrectable_
+        });
+    }
 
-    std::move(jpeg_packet_incoming_buffer_.begin(), jpeg_packet_incoming_buffer_.end(),
-              std::back_inserter(this->jpeg_packet_frame_buffer_));
-    jpeg_packet_incoming_buffer_.clear();
 }
 
 bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<char> &message) {
@@ -289,16 +292,28 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<ch
     if (jpeg_sequence_utility_->update_seq(jpeg_packet.header.sequence_number) == 0) {
         BOOST_LOG_TRIVIAL(trace) << "JPEG Sequence number invalid: " << jpeg_packet.header.sequence_number <<
                                  "Expected " << jpeg_sequence_utility_->highest_seq_seen();
-    }
-
-    if (this->statistics_handler_) {
-        this->statistics_handler_(statistics{this->jpeg_sequence_utility_->received_packets(),
-                                             this->jpeg_sequence_utility_->expected(),
-                                             0, 0
-        });
+        return true;
     }
 
     this->jpeg_packet_incoming_buffer_.push_back(std::move(jpeg_packet));
+
+    if (this->jpeg_packet_incoming_buffer_.size() < this->buffer_size) {
+        this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.back());
+        return true;
+    }
+    const auto gap = (this->jpeg_packet_incoming_buffer_.end() - 1)->header.sequence_number -
+                     (this->jpeg_packet_incoming_buffer_.end() - 2)->header.sequence_number;
+    if (gap == 2) {
+        BOOST_LOG_TRIVIAL(trace) << "Gonna FEC!";
+
+    } else if (gap > 2) {
+        BOOST_LOG_TRIVIAL(trace) << "GAP >2";
+        ++this->uncorrectable_;
+    } else {
+        this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.back());
+    }
+    this->jpeg_packet_incoming_buffer_.pop_front();
+
     return true;
 }
 
@@ -308,6 +323,8 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_fec_packet(const std::vector<cha
     rtp::packet::custom_fec_packet_grammar<std::vector<char>::const_iterator> custom_fec_grammar{};
     auto success = boost::spirit::qi::parse(begin, end, custom_fec_grammar, fec_packet);
     if (!success)
+        return false;
+    if (fec_packet.header.payload_type_field != 100u)
         return false;
 
     if (fec_packet.header.ssrc != this->ssrc_) {
@@ -319,8 +336,13 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_fec_packet(const std::vector<cha
     if (fec_sequence_utility_->update_seq(fec_packet.header.sequence_number) == 0) {
         BOOST_LOG_TRIVIAL(trace) << "FEC Sequence number invalid: " << fec_packet.header.sequence_number <<
                                  "Expected " << fec_sequence_utility_->highest_seq_seen();
+        return true;
     }
     this->fec_packet_incoming_buffer_.push_back(std::move(fec_packet));
+
+    if (this->fec_packet_incoming_buffer_.size() > this->buffer_size)
+        this->fec_packet_incoming_buffer_.pop_front();
+
     return true;
 }
 

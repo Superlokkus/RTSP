@@ -187,8 +187,11 @@ private:
     std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_incoming_buffer_;
     std::deque<rtp::packet::custom_fec_packet> fec_packet_incoming_buffer_;
 
+    uint64_t corrected_{0u};
+    uint64_t uncorrectable_{0u};
 
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
+    const uint8_t buffer_size{50u};
 
     void start_async_receive(shared_udp_socket &socket);
 
