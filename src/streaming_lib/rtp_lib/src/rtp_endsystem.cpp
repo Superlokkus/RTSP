@@ -555,6 +555,7 @@ rtp::fec_generator::generate_next_fec_packet(const std::vector<uint8_t> &media_p
     std::copy(protection_len.begin(), protection_len.end(), inserter);
 
     std::array<uint8_t, 6> mask;
+    mask.fill(0u);
 
     for (unsigned u = 0; u < this->fec_k_; ++u) {
         mask.at(u / 8u) |= 0b10000000 >> u % 8u;
