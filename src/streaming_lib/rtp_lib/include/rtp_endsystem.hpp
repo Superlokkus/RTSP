@@ -207,6 +207,8 @@ private:
 
     bool handle_new_fec_packet(const std::vector<char> &message);
 
+    bool recover_packet_by_fec();
+
     void display_next_frame_timer_handler(const boost::system::error_code &error);
 };
 

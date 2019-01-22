@@ -6,6 +6,7 @@
 
 #include <array>
 #include <algorithm>
+#include <bitset>
 
 #include <boost/log/trivial.hpp>
 
@@ -305,7 +306,11 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<ch
                      (this->jpeg_packet_incoming_buffer_.end() - 2)->header.sequence_number;
     if (gap == 2) {
         BOOST_LOG_TRIVIAL(trace) << "Gonna FEC!";
-
+        if (this->recover_packet_by_fec()) {
+            ++this->corrected_;
+        } else {
+            ++this->uncorrectable_;
+        }
     } else if (gap > 2) {
         BOOST_LOG_TRIVIAL(trace) << "GAP >2";
         ++this->uncorrectable_;
@@ -362,6 +367,28 @@ void rtp::unicast_jpeg_rtp_receiver::display_next_frame_timer_handler(const boos
                                                                                   &unicast_jpeg_rtp_receiver::display_next_frame_timer_handler,
                                                                                   this,
                                                                                   std::placeholders::_1)));
+}
+
+bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
+    const auto to_recover_seq_num = (this->jpeg_packet_incoming_buffer_.end() - 1)->header.sequence_number - 1;
+
+    auto fec_candidate = std::find_if(this->fec_packet_incoming_buffer_.crbegin(),
+                                      this->fec_packet_incoming_buffer_.crend(),
+                                      [to_recover_seq_num](const auto &fec_packet) -> bool {
+                                          if (to_recover_seq_num < fec_packet.header.sn_base_field ||
+                                              to_recover_seq_num > fec_packet.header.sn_base_field + 48)
+                                              return false;
+                                          const auto seq_i = to_recover_seq_num - fec_packet.header.sn_base_field;
+                                          const std::bitset<64> mask_field{fec_packet.levels.at(
+                                                  0).first.mask_field}; //For more protection levels we would iterate here
+                                          if (!mask_field.test(63 - seq_i))
+                                              return false;
+                                          return true;
+                                      });
+    if (fec_candidate == this->fec_packet_incoming_buffer_.crend())
+        return false;
+
+    return true;
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
