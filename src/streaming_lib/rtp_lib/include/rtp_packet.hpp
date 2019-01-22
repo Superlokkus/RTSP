@@ -366,9 +366,11 @@ struct custom_fec_packet_grammar {
             custom_fec_level_header level_header{};
             qi::parse(begin, end, qi::big_word, level_header.protection_length_field);
             level_header.mask_field = 0u;
-            for (unsigned i = fec_level_header_size - 3; i < 6; --i) {
+            for (unsigned i = 0; i < fec_level_header_size - 2; ++i) {
                 qi::parse(begin, end, qi::byte_, octet_buffer);
-                level_header.mask_field |= octet_buffer << 8 * i;
+                uint64_t value = octet_buffer;
+                value = value << 8u * (7u - i);
+                level_header.mask_field |= value;
             }
             if (begin + level_header.protection_length_field > end)
                 return false;
