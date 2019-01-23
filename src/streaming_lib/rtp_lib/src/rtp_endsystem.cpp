@@ -299,11 +299,11 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<ch
     this->jpeg_packet_incoming_buffer_.push_back(std::move(jpeg_packet));
 
     if (this->jpeg_packet_incoming_buffer_.size() < this->buffer_size) {
-        this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.back());
         return true;
     }
-    const auto gap = (this->jpeg_packet_incoming_buffer_.end() - 1)->header.sequence_number -
-                     (this->jpeg_packet_incoming_buffer_.end() - 2)->header.sequence_number;
+    const auto gap = (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay)->header.sequence_number -
+                     (this->jpeg_packet_incoming_buffer_.end() -
+                      (this->media_packet_delay + 1))->header.sequence_number;
     if (gap == 2) {
         BOOST_LOG_TRIVIAL(trace) << "Gonna FEC!";
         if (this->recover_packet_by_fec()) {
@@ -314,9 +314,9 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<ch
     } else if (gap > 2) {
         BOOST_LOG_TRIVIAL(trace) << "GAP >2";
         ++this->uncorrectable_;
-    } else {
-        this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.back());
     }
+
+    this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.front());
     this->jpeg_packet_incoming_buffer_.pop_front();
 
     return true;
@@ -370,7 +370,8 @@ void rtp::unicast_jpeg_rtp_receiver::display_next_frame_timer_handler(const boos
 }
 
 bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
-    const auto to_recover_seq_num = (this->jpeg_packet_incoming_buffer_.end() - 1)->header.sequence_number - 1;
+    const auto to_recover_seq_num =
+            (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay)->header.sequence_number - 1;
 
     auto fec_candidate = std::find_if(this->fec_packet_incoming_buffer_.crbegin(),
                                       this->fec_packet_incoming_buffer_.crend(),
@@ -545,7 +546,8 @@ rtp::fec_generator::generate_next_fec_packet(const std::vector<uint8_t> &media_p
 
     std::array<uint8_t, 2> sn_base;
     karma::generate(sn_base.begin(), karma::big_word, this->fec_seq_base);
-    std::copy_n(begin, 2, inserter);
+    this->fec_seq_base = 0;
+    std::copy_n(sn_base.begin(), 2, inserter);
     std::advance(begin, 2);
     std::copy_n(begin, 6, inserter);
     std::advance(begin, 6);

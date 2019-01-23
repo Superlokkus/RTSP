@@ -192,6 +192,7 @@ private:
 
     const uint8_t frame_period{40u};//!<ms Should be read from jpeg headers I guess
     const uint8_t buffer_size{50u};
+    const uint8_t media_packet_delay{20u};
 
     void start_async_receive(shared_udp_socket &socket);
 
