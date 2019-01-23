@@ -26,7 +26,7 @@ To build this project following libraries are needed
 Qt 4.8 is installed on ilux150 so build boost and install it to home one could use 
 ```
 cd /tmp/
-git clone git@github.com:boostorg/boost.git
+git clone https://github.com/boostorg/boost.git
 cd boost/
 git submodule update  --init --recursive
 ./bootstrap.sh --prefix=$HOME
