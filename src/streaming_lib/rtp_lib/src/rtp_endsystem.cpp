@@ -41,7 +41,7 @@ rtp::unicast_jpeg_rtp_sender::unicast_jpeg_rtp_sender(boost::asio::ip::udp::endp
     BOOST_LOG_TRIVIAL(debug) << "And unicast_jpeg_rtp_sender with channel droprate of " << channel_simulation_droprate
                              << " and fec_k of " << fec_k;
     this->channel_failure_distribution_ = std::bernoulli_distribution{channel_simulation_droprate};
-    this->fec_generator_ = fec_generator{fec_k, ssrc_};
+    this->fec_generator_ = fec_generator{fec_k};
 }
 
 rtp::unicast_jpeg_rtp_sender::~unicast_jpeg_rtp_sender() {
@@ -427,9 +427,94 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
             media_packets.push_back(*media_it);
         }
     }
+    auto packet = fec_reconstruction(fec_packet, media_packets);
 
 
     return true;
+}
+
+rtp::packet::custom_jpeg_packet rtp::unicast_jpeg_rtp_receiver::fec_reconstruction(
+        const std::pair <rtp::packet::custom_fec_packet, std::vector<uint8_t>> &fec_packet,
+        const std::vector <std::pair<rtp::packet::custom_jpeg_packet, std::vector < uint8_t>>
+
+> &media_packets) {
+const uint16_t fec_k = media_packets.size() + 1;
+fec_generator fec_gen{fec_k};
+for (
+const auto &media_packet
+: media_packets) {
+fec_gen.
+generate_next_fec_packet(media_packet
+.second, media_packet.first.header.sequence_number);
+}
+std::vector <uint8_t> zeros(12);
+auto step_1 = fec_gen.generate_next_fec_packet(zeros, media_packets.at(0).first.header.sequence_number);
+
+auto f = [](uint8_t a, uint8_t b) -> uint8_t {
+    return a ^ b;
+};
+
+std::vector <uint8_t> bit_string;
+
+std::transform(step_1
+->
+
+begin(), step_1
+
+->
+
+begin()
+
++ 10,
+fec_packet.second.
+
+begin()
+
++ 12 + fec_packet.first.header.csrc * 4,
+std::back_inserter(bit_string), f
+);
+rtp::packet::standard_rtp_header step_4{};
+uint8_t octet_buffer = bit_string.at(0);
+step_4.
+padding_set = (octet_buffer & 0b00100000) >> 5;
+step_4.
+extension_bit = (octet_buffer & 0b00010000) >> 4;
+step_4.
+csrc = (octet_buffer & 0b00001111);
+octet_buffer = bit_string.at(1);
+step_4.
+marker = (octet_buffer & 0b10000000) >> 7;
+step_4.
+payload_type_field = (octet_buffer & 0b01111111);
+
+namespace qi = boost::spirit::qi;
+qi::parse(bit_string
+.
+
+begin()
+
++ 4, bit_string.
+
+begin()
+
++ 8, qi::big_dword, step_4.timestamp);
+uint16_t len_recovery{};
+qi::parse(bit_string
+.
+
+begin()
+
++ 8, bit_string.
+
+begin()
+
++ 10, qi::big_dword, len_recovery);
+
+
+
+return
+
+rtp::packet::custom_jpeg_packet();
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
@@ -516,8 +601,8 @@ int rtp::rtp_receiver_squence_utility::update_seq(uint16_t seq) {
     return 1;
 }
 
-rtp::fec_generator::fec_generator(uint16_t fec_k, uint32_t ssrc) :
-        fec_k_(fec_k), current_fec_k_(fec_k), ssrc_(ssrc) {
+rtp::fec_generator::fec_generator(uint16_t fec_k) :
+        fec_k_(fec_k), current_fec_k_(fec_k) {
 }
 
 std::shared_ptr<std::vector<uint8_t>>

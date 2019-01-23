@@ -21,7 +21,7 @@
 namespace rtp {
 
 struct fec_generator {
-    fec_generator(uint16_t fec_k, uint32_t ssrc);
+    fec_generator(uint16_t fec_k);
 
     /*! @Generates the FEC header, fec level headers and payload (but not the rtp header)
      *
@@ -33,7 +33,6 @@ struct fec_generator {
 private:
     uint16_t fec_k_;
     uint16_t current_fec_k_;
-    uint32_t ssrc_;
 
     std::vector<uint8_t> fec_bit_string_;
     uint16_t fec_seq_base{0u};
@@ -210,6 +209,10 @@ private:
     bool handle_new_fec_packet(const std::vector<char> &message);
 
     bool recover_packet_by_fec();
+
+    static rtp::packet::custom_jpeg_packet fec_reconstruction(
+            const std::pair<rtp::packet::custom_fec_packet, std::vector<uint8_t>> &fec_packet,
+            const std::vector<std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>>> &media_packets);
 
     void display_next_frame_timer_handler(const boost::system::error_code &error);
 };
