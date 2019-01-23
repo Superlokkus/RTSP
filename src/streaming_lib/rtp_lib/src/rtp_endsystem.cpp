@@ -434,87 +434,46 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
 }
 
 rtp::packet::custom_jpeg_packet rtp::unicast_jpeg_rtp_receiver::fec_reconstruction(
-        const std::pair <rtp::packet::custom_fec_packet, std::vector<uint8_t>> &fec_packet,
-        const std::vector <std::pair<rtp::packet::custom_jpeg_packet, std::vector < uint8_t>>
+        const std::pair<rtp::packet::custom_fec_packet, std::vector<uint8_t>> &fec_packet,
+        const std::vector<std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>>
 
-> &media_packets) {
-const uint16_t fec_k = media_packets.size() + 1;
-fec_generator fec_gen{fec_k};
-for (
-const auto &media_packet
-: media_packets) {
-fec_gen.
-generate_next_fec_packet(media_packet
-.second, media_packet.first.header.sequence_number);
-}
-std::vector <uint8_t> zeros(12);
-auto step_1 = fec_gen.generate_next_fec_packet(zeros, media_packets.at(0).first.header.sequence_number);
+        > &media_packets) {
+    const uint16_t fec_k = media_packets.size() + 1;
+    fec_generator fec_gen{fec_k};
+    for (
+        const auto &media_packet
+            : media_packets) {
+        fec_gen.
+                generate_next_fec_packet(media_packet
+                                                 .second, media_packet.first.header.sequence_number);
+    }
+    std::vector<uint8_t> zeros(12);
+    auto step_1 = fec_gen.generate_next_fec_packet(zeros, media_packets.at(0).first.header.sequence_number);
 
-auto f = [](uint8_t a, uint8_t b) -> uint8_t {
-    return a ^ b;
-};
+    auto f = [](uint8_t a, uint8_t b) -> uint8_t {
+        return a ^ b;
+    };
 
-std::vector <uint8_t> bit_string;
+    std::vector<uint8_t> bit_string;
 
-std::transform(step_1
-->
+    std::transform(step_1->begin(), step_1->begin() + 10,
+                   fec_packet.second.begin() + 12 + fec_packet.first.header.csrc * 4,
+                   std::back_inserter(bit_string), f);
+    rtp::packet::standard_rtp_header step_4{};
+    uint8_t octet_buffer = bit_string.at(0);
+    step_4.padding_set = (octet_buffer & 0b00100000) >> 5;
+    step_4.extension_bit = (octet_buffer & 0b00010000) >> 4;
+    step_4.csrc = (octet_buffer & 0b00001111);
+    octet_buffer = bit_string.at(1);
+    step_4.marker = (octet_buffer & 0b10000000) >> 7;
+    step_4.payload_type_field = (octet_buffer & 0b01111111);
 
-begin(), step_1
+    namespace qi = boost::spirit::qi;
+    qi::parse(bit_string.begin() + 4, bit_string.begin() + 8, qi::big_dword, step_4.timestamp);
+    uint16_t len_recovery{};
+    qi::parse(bit_string.begin() + 8, bit_string.begin() + 10, qi::big_dword, len_recovery);
 
-->
-
-begin()
-
-+ 10,
-fec_packet.second.
-
-begin()
-
-+ 12 + fec_packet.first.header.csrc * 4,
-std::back_inserter(bit_string), f
-);
-rtp::packet::standard_rtp_header step_4{};
-uint8_t octet_buffer = bit_string.at(0);
-step_4.
-padding_set = (octet_buffer & 0b00100000) >> 5;
-step_4.
-extension_bit = (octet_buffer & 0b00010000) >> 4;
-step_4.
-csrc = (octet_buffer & 0b00001111);
-octet_buffer = bit_string.at(1);
-step_4.
-marker = (octet_buffer & 0b10000000) >> 7;
-step_4.
-payload_type_field = (octet_buffer & 0b01111111);
-
-namespace qi = boost::spirit::qi;
-qi::parse(bit_string
-.
-
-begin()
-
-+ 4, bit_string.
-
-begin()
-
-+ 8, qi::big_dword, step_4.timestamp);
-uint16_t len_recovery{};
-qi::parse(bit_string
-.
-
-begin()
-
-+ 8, bit_string.
-
-begin()
-
-+ 10, qi::big_dword, len_recovery);
-
-
-
-return
-
-rtp::packet::custom_jpeg_packet();
+    return rtp::packet::custom_jpeg_packet();
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
