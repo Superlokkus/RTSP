@@ -428,6 +428,17 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
         }
     }
     auto packet = fec_reconstruction(fec_packet, media_packets);
+    //Remove padding
+    std::array<uint8_t, 2> magic_bytes{0xFFu, 0xD9};
+    auto end_of_frame = std::find_end(packet.first.data.begin(), packet.first.data.end(), magic_bytes.begin(),
+                                      magic_bytes.end());
+    if (end_of_frame != packet.first.data.end()) {
+        std::advance(end_of_frame, 2);
+        const auto padding_count = std::distance(end_of_frame, packet.first.data.end());
+        packet.first.data.erase(end_of_frame, packet.first.data.end());
+        packet.second.erase(packet.second.end() - padding_count, packet.second.end());
+    }
+
     this->jpeg_packet_incoming_buffer_.insert((this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay),
                                               packet);
 
@@ -499,7 +510,8 @@ std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>> rtp::unicast_jp
         BOOST_LOG_TRIVIAL(trace) << "Could not fec";
     }
 
-    return std::make_pair(jpeg_packet, bit_string);
+
+    return std::make_pair(jpeg_packet, rtp_header_buffer);
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
