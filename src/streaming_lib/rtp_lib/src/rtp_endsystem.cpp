@@ -384,10 +384,44 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
                                                   0).first.mask_field}; //For more protection levels we would iterate here
                                           if (!mask_field.test(63 - seq_i))
                                               return false;
+
+                                          //One should compare here for the bits in the mask and the media packets in buffer
+
                                           return true;
                                       });
     if (fec_candidate == this->fec_packet_incoming_buffer_.crend())
         return false;
+
+    auto fec_packet = *fec_candidate;
+    const auto seq_i = to_recover_seq_num - fec_packet.header.sn_base_field;
+    const std::bitset<64> mask_field{fec_packet.levels.at(
+            0).first.mask_field};
+    std::vector<rtp::packet::custom_jpeg_packet> media_packets;
+
+    for (unsigned u = 0; u < seq_i; ++u) {
+        if (mask_field.test(63 - u)) {
+            const auto media_it = (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay) - seq_i + u;
+            if (media_it->header.sequence_number != to_recover_seq_num - seq_i + u) {
+                BOOST_LOG_TRIVIAL(trace) << "media_it->header.sequence_number != to_recover_seq_num - seq_i + u"
+                                         << media_it->header.sequence_number << " " << to_recover_seq_num - seq_i + u;
+                return false;
+            }
+            media_packets.push_back(*media_it);
+        }
+    }
+    for (unsigned u = seq_i + 1; u <= 63; ++u) {
+        if (mask_field.test(63 - u)) {
+            const auto media_it =
+                    (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay) + (u - seq_i - 1);
+            if (media_it->header.sequence_number != to_recover_seq_num + (u - seq_i)) {
+                BOOST_LOG_TRIVIAL(trace) << "media_it->header.sequence_number != to_recover_seq_num + (u - seq_i)"
+                                         << media_it->header.sequence_number << " " << to_recover_seq_num + (u - seq_i);
+                return false;
+            }
+            media_packets.push_back(*media_it);
+        }
+    }
+
 
     return true;
 }
