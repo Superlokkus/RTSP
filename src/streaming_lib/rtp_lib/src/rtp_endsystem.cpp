@@ -491,7 +491,7 @@ std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>> rtp::unicast_jp
     std::copy(bit_string.begin(), bit_string.end(), std::back_inserter(rtp_header_buffer));
 
     rtp::packet::custom_jpeg_packet_grammar<std::vector<uint8_t>::const_iterator> custom_jpeg_grammar{};
-    auto begin = bit_string.cbegin(), end = bit_string.cend();
+    auto begin = rtp_header_buffer.cbegin(), end = rtp_header_buffer.cend();
 
     rtp::packet::custom_jpeg_packet jpeg_packet;
     auto success = boost::spirit::qi::parse(begin, end, custom_jpeg_grammar, jpeg_packet);
