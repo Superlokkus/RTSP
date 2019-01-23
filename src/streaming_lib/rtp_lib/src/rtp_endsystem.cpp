@@ -296,14 +296,16 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<ch
         return true;
     }
 
-    this->jpeg_packet_incoming_buffer_.push_back(std::move(jpeg_packet));
+    std::vector<uint8_t> raw{message.cbegin(), message.cend()};
+    this->jpeg_packet_incoming_buffer_.emplace_back(std::move(jpeg_packet), std::move(raw));
 
     if (this->jpeg_packet_incoming_buffer_.size() < this->buffer_size) {
         return true;
     }
-    const auto gap = (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay)->header.sequence_number -
-                     (this->jpeg_packet_incoming_buffer_.end() -
-                      (this->media_packet_delay + 1))->header.sequence_number;
+    const auto gap =
+            (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay)->first.header.sequence_number -
+            (this->jpeg_packet_incoming_buffer_.end() -
+             (this->media_packet_delay + 1))->first.header.sequence_number;
     if (gap == 2) {
         BOOST_LOG_TRIVIAL(trace) << "Gonna FEC!";
         if (this->recover_packet_by_fec()) {
@@ -316,7 +318,7 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_jpeg_packet(const std::vector<ch
         ++this->uncorrectable_;
     }
 
-    this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.front());
+    this->jpeg_packet_frame_buffer_.push_back(jpeg_packet_incoming_buffer_.front().first);
     this->jpeg_packet_incoming_buffer_.pop_front();
 
     return true;
@@ -343,7 +345,9 @@ bool rtp::unicast_jpeg_rtp_receiver::handle_new_fec_packet(const std::vector<cha
                                  "Expected " << fec_sequence_utility_->highest_seq_seen();
         return true;
     }
-    this->fec_packet_incoming_buffer_.push_back(std::move(fec_packet));
+
+    std::vector<uint8_t> raw{message.cbegin(), message.cend()};
+    this->fec_packet_incoming_buffer_.emplace_back(std::move(fec_packet), std::move(raw));
 
     if (this->fec_packet_incoming_buffer_.size() > this->buffer_size)
         this->fec_packet_incoming_buffer_.pop_front();
@@ -371,16 +375,16 @@ void rtp::unicast_jpeg_rtp_receiver::display_next_frame_timer_handler(const boos
 
 bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
     const auto to_recover_seq_num =
-            (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay)->header.sequence_number - 1;
+            (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay)->first.header.sequence_number - 1;
 
     auto fec_candidate = std::find_if(this->fec_packet_incoming_buffer_.crbegin(),
                                       this->fec_packet_incoming_buffer_.crend(),
                                       [to_recover_seq_num](const auto &fec_packet) -> bool {
-                                          if (to_recover_seq_num < fec_packet.header.sn_base_field ||
-                                              to_recover_seq_num > fec_packet.header.sn_base_field + 48)
+                                          if (to_recover_seq_num < fec_packet.first.header.sn_base_field ||
+                                              to_recover_seq_num > fec_packet.first.header.sn_base_field + 48)
                                               return false;
-                                          const auto seq_i = to_recover_seq_num - fec_packet.header.sn_base_field;
-                                          const std::bitset<64> mask_field{fec_packet.levels.at(
+                                          const auto seq_i = to_recover_seq_num - fec_packet.first.header.sn_base_field;
+                                          const std::bitset<64> mask_field{fec_packet.first.levels.at(
                                                   0).first.mask_field}; //For more protection levels we would iterate here
                                           if (!mask_field.test(63 - seq_i))
                                               return false;
@@ -393,17 +397,18 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
         return false;
 
     auto fec_packet = *fec_candidate;
-    const auto seq_i = to_recover_seq_num - fec_packet.header.sn_base_field;
-    const std::bitset<64> mask_field{fec_packet.levels.at(
+    const auto seq_i = to_recover_seq_num - fec_packet.first.header.sn_base_field;
+    const std::bitset<64> mask_field{fec_packet.first.levels.at(
             0).first.mask_field};
-    std::vector<rtp::packet::custom_jpeg_packet> media_packets;
+    std::vector<std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>>> media_packets;
 
     for (unsigned u = 0; u < seq_i; ++u) {
         if (mask_field.test(63 - u)) {
             const auto media_it = (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay) - seq_i + u;
-            if (media_it->header.sequence_number != to_recover_seq_num - seq_i + u) {
+            if (media_it->first.header.sequence_number != to_recover_seq_num - seq_i + u) {
                 BOOST_LOG_TRIVIAL(trace) << "media_it->header.sequence_number != to_recover_seq_num - seq_i + u"
-                                         << media_it->header.sequence_number << " " << to_recover_seq_num - seq_i + u;
+                                         << media_it->first.header.sequence_number << " "
+                                         << to_recover_seq_num - seq_i + u;
                 return false;
             }
             media_packets.push_back(*media_it);
@@ -413,9 +418,10 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
         if (mask_field.test(63 - u)) {
             const auto media_it =
                     (this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay) + (u - seq_i - 1);
-            if (media_it->header.sequence_number != to_recover_seq_num + (u - seq_i)) {
+            if (media_it->first.header.sequence_number != to_recover_seq_num + (u - seq_i)) {
                 BOOST_LOG_TRIVIAL(trace) << "media_it->header.sequence_number != to_recover_seq_num + (u - seq_i)"
-                                         << media_it->header.sequence_number << " " << to_recover_seq_num + (u - seq_i);
+                                         << media_it->first.header.sequence_number << " "
+                                         << to_recover_seq_num + (u - seq_i);
                 return false;
             }
             media_packets.push_back(*media_it);

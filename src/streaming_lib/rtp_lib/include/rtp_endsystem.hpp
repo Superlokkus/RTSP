@@ -184,8 +184,9 @@ private:
 
     std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_frame_buffer_;
 
-    std::deque<rtp::packet::custom_jpeg_packet> jpeg_packet_incoming_buffer_;
-    std::deque<rtp::packet::custom_fec_packet> fec_packet_incoming_buffer_;
+    std::deque<std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>>> jpeg_packet_incoming_buffer_;
+    std::deque<std::pair<rtp::packet::custom_fec_packet, std::vector<uint8_t>>> fec_packet_incoming_buffer_;
+
 
     uint64_t corrected_{0u};
     uint64_t uncorrectable_{0u};
