@@ -529,7 +529,7 @@ rtp::fec_generator::generate_next_fec_packet(const std::vector<uint8_t> &media_p
     }
 
 
-    if (this->current_fec_k_-- >= 1) {
+    if (this->current_fec_k_-- > 1) {
         return std::shared_ptr<std::vector<uint8_t>>{};
     }
     this->current_fec_k_ = this->fec_k_;
