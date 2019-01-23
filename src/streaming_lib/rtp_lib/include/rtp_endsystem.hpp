@@ -210,7 +210,7 @@ private:
 
     bool recover_packet_by_fec();
 
-    static rtp::packet::custom_jpeg_packet fec_reconstruction(
+    static std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>> fec_reconstruction(
             const std::pair<rtp::packet::custom_fec_packet, std::vector<uint8_t>> &fec_packet,
             const std::vector<std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>>> &media_packets);
 

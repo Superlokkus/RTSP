@@ -428,12 +428,13 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
         }
     }
     auto packet = fec_reconstruction(fec_packet, media_packets);
-
+    this->jpeg_packet_incoming_buffer_.insert((this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay),
+                                              packet);
 
     return true;
 }
 
-rtp::packet::custom_jpeg_packet rtp::unicast_jpeg_rtp_receiver::fec_reconstruction(
+std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>> rtp::unicast_jpeg_rtp_receiver::fec_reconstruction(
         const std::pair<rtp::packet::custom_fec_packet, std::vector<uint8_t>> &fec_packet,
         const std::vector<std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>>
 
@@ -473,7 +474,32 @@ rtp::packet::custom_jpeg_packet rtp::unicast_jpeg_rtp_receiver::fec_reconstructi
     uint16_t len_recovery{};
     qi::parse(bit_string.begin() + 8, bit_string.begin() + 10, qi::big_dword, len_recovery);
 
-    return rtp::packet::custom_jpeg_packet();
+    bit_string.clear();
+    const uint16_t protection_len = fec_packet.first.levels.at(0).first.protection_length_field;
+    std::copy(fec_packet.first.levels.at(0).second.cbegin(), fec_packet.first.levels.at(0).second.cend(),
+              std::back_inserter(bit_string));
+    std::fill_n(std::back_inserter(bit_string), protection_len - bit_string.size(), 0u);
+    for (const auto &media_packet : media_packets) {
+        std::transform(media_packet.second.begin() + 12, media_packet.second.end(), bit_string.begin(),
+                       bit_string.begin(), f);
+    }
+    namespace karma = boost::spirit::karma;
+    std::vector<uint8_t> rtp_header_buffer;
+    rtp::packet::standard_rtp_header_generator<std::back_insert_iterator<std::vector<uint8_t>>> rtp_header_grammar{};
+    boost::spirit::karma::generate(std::back_inserter(rtp_header_buffer), rtp_header_grammar, step_4);
+
+    std::copy(bit_string.begin(), bit_string.end(), std::back_inserter(rtp_header_buffer));
+
+    rtp::packet::custom_jpeg_packet_grammar<std::vector<uint8_t>::const_iterator> custom_jpeg_grammar{};
+    auto begin = bit_string.cbegin(), end = bit_string.cend();
+
+    rtp::packet::custom_jpeg_packet jpeg_packet;
+    auto success = boost::spirit::qi::parse(begin, end, custom_jpeg_grammar, jpeg_packet);
+    if (!success) {
+        BOOST_LOG_TRIVIAL(trace) << "Could not fec";
+    }
+
+    return std::make_pair(jpeg_packet, bit_string);
 }
 
 rtp::unicast_jpeg_rtp_receiver::~unicast_jpeg_rtp_receiver() {
