@@ -29,7 +29,7 @@ rtsp::rtsp_client::rtsp_client(std::string url, std::function<void(rtsp::rtsp_cl
 
     std::uniform_int_distribution<int> uniform_dist(1, 6);
 
-    const auto thread_count{1u};
+    const auto thread_count{std::max<unsigned>(std::thread::hardware_concurrency() / 2u, 1u)};
     this->process_url(url);
     std::generate_n(std::back_inserter(this->io_run_threads_),
                     thread_count,

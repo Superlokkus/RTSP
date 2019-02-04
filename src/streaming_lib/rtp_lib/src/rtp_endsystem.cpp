@@ -437,10 +437,6 @@ bool rtp::unicast_jpeg_rtp_receiver::recover_packet_by_fec() {
         const auto padding_count = std::distance(end_of_frame, packet.first.data.end());
         packet.first.data.erase(end_of_frame, packet.first.data.end());
         packet.second.erase(packet.second.end() - padding_count, packet.second.end());
-        packet = *((this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay) - (1));
-
-    } else {
-        packet = *((this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay) + (1));
     }
 
     this->jpeg_packet_incoming_buffer_.insert((this->jpeg_packet_incoming_buffer_.end() - this->media_packet_delay),
@@ -493,8 +489,7 @@ std::pair<rtp::packet::custom_jpeg_packet, std::vector<uint8_t>> rtp::unicast_jp
     const uint16_t protection_len = fec_packet.first.levels.at(0).first.protection_length_field;
     std::copy(fec_packet.first.levels.at(0).second.cbegin(), fec_packet.first.levels.at(0).second.cend(),
               std::back_inserter(bit_string));
-    std::fill_n(std::back_inserter(bit_string),
-                (bit_string.size() < protection_len) ? protection_len - bit_string.size() : 0, 0u);
+    std::fill_n(std::back_inserter(bit_string), protection_len - bit_string.size(), 0u);
     for (const auto &media_packet : media_packets) {
         std::transform(media_packet.second.begin() + 12, media_packet.second.end(), bit_string.begin(),
                        bit_string.begin(), f);
